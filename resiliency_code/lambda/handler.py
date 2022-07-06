@@ -28,9 +28,10 @@ def handler(event, context):
   log_capture, report_capture = __capture_experiment_logs()
 
   experiment_source = event.get('experiment_source')
+  experiment_state = event.get('state')
   if experiment_source:
     logger.info('ChaosToolkit attempting to load experiment: %s', experiment_source)
-
+  
   try:
     get_object(event.get('bucket_name'), experiment_source, event.get('configuration', {}))
   except Exception as e:
@@ -38,7 +39,12 @@ def handler(event, context):
   
   experiment = load_experiment(create_presigned_url(event.get('bucket_name'), experiment_source))
 
-  run_experiment(experiment)
+  resp = run_experiment(experiment)
+
+  if resp.get("status") == "success":
+    event.update({"state": "done"})
+  if resp.get("status") == "failed":
+    event.update({"state": "failed"})
 
   # If any errors were captured, exit with non-zero status
   # (shows as failure in Lambda)
