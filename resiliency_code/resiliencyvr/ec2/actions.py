@@ -1,4 +1,3 @@
-import sys
 import logging
 from typing import List
 
@@ -37,7 +36,7 @@ def stress_memory(targets: List[str] = None,
 	session = boto3.Session()
 	ssm = session.client('ssm', region)
 	try:
-		response = ssm.send_command(DocumentName = "StressMemory",
+		ssm.send_command(DocumentName = "StressMemory",
 										InstanceIds = test_instance_ids,
 										CloudWatchOutputConfig = {
                                 			'CloudWatchOutputEnabled': True},
