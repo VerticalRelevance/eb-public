@@ -1,4 +1,3 @@
-import sys
 import boto3
 import logging
 from random import randint
