@@ -2,7 +2,7 @@ import io
 import logging
 import sys
 
-from resiliencyvr.s3.shared import get_object, create_presigned_url
+from experimentvr.s3.shared import get_object, create_presigned_url
 from chaoslib.experiment import run_experiment
 from chaoslib.loader import load_experiment
 from chaostoolkit.logging import configure_logger

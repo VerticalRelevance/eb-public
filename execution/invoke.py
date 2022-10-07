@@ -34,7 +34,7 @@ def create_payload(bucket, experiment):
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Invoke Resiliency Lambda with payload"
+        description="Invoke Experiment Lambda with payload"
     )
     parser.add_argument(
         "--bucket",
@@ -47,7 +47,7 @@ def main():
         "--function",
         dest="function",
         type=str,
-        help="Name of Resiliency Lambda Function",
+        help="Name of Experiment Lambda Function",
         required=True,
     )
     parser.add_argument(
