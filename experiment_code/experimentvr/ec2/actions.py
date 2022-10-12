@@ -3,7 +3,7 @@ from typing import List
 
 import boto3
 from botocore.exceptions import ClientError
-from resiliencyvr.ec2.shared import get_test_instance_ids
+from experimentvr.ec2.shared import get_test_instance_ids
 
 
 def stress_memory(targets: List[str] = None,
