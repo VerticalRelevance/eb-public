@@ -51,6 +51,7 @@ def handler(event, context):
   if log_capture.getvalue():
     sys.exit(1)
 
+  return event
 
 def __capture_experiment_logs():
   """Captures logs for ChaosToolkit experiments"""
