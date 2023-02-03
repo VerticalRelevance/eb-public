@@ -41,9 +41,10 @@ def handler(event, context):
 
   resp = run_experiment(experiment)
 
+  print("resp: " + str(resp))
   if resp.get("status") == "success":
     event.update({"state": "done"})
-  if resp.get("status") == "failed":
+  else:
     event.update({"state": "failed"})
 
   # If any errors were captured, exit with non-zero status
