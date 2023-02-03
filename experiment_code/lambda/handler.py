@@ -7,7 +7,6 @@ from chaoslib.experiment import run_experiment
 from chaoslib.loader import load_experiment
 from chaostoolkit.logging import configure_logger
 from logzero import logger
-from pprint import pprint
 
 
 configure_logger()
@@ -42,7 +41,7 @@ def handler(event, context):
 
   resp = run_experiment(experiment)
 
-  pprint("resp: " + str(resp))
+  print("resp: " + str(resp))
   if resp.get("status") == "success" or resp.get("status") == "completed":
     event.update({"state": "done"})
   else:
