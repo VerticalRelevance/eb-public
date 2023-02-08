@@ -2,8 +2,8 @@ import boto3
 import logging
 from typing import List
 from botocore.exceptions import ClientError
-from resiliencyvr.ec2.shared import get_test_instance_ids
-from resiliencyvr.ebs.shared import get_ebs_volume_by_tag
+from experimentvr.ec2.shared import get_test_instance_ids
+from experimentvr.ebs.shared import get_ebs_volume_by_tag
 
 
 def detach_volume(region: str = None,

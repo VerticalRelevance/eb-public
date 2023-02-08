@@ -1,8 +1,8 @@
 from botocore.exceptions import ClientError
 from chaosaws import aws_client
-from resiliencyvr.az.shared import apply_new_nacl, get_subnets_in_az, get_subnets_nacl_associations
-from resiliencyvr.state import load_rollback_config, save_rollback_config, delete_rollback_config
-from resiliencyvr.vpc.shared import get_vpc_ids
+from experimentvr.az.shared import apply_new_nacl, get_subnets_in_az, get_subnets_nacl_associations
+from experimentvr.state import load_rollback_config, save_rollback_config, delete_rollback_config
+from experimentvr.vpc.shared import get_vpc_ids
 from chaoslib.types import Configuration
 
 from logzero import logger

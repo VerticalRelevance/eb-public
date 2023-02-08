@@ -5,8 +5,8 @@ import logging
 from typing import List
 from botocore.exceptions import ClientError
 from typing import List
-from resiliencyvr.ec2.shared import get_test_instance_ids
-from resiliencyvr.network.shared import get_ip_ranges
+from experimentvr.ec2.shared import get_test_instance_ids
+from experimentvr.network.shared import get_ip_ranges
 
 logging.basicConfig(level=logging.ERROR)
 

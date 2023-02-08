@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from resiliencyvr.dynamodb.actions import blackhole_dynamodb
+from experimentvr.dynamodb.actions import blackhole_dynamodb
 
 class TestDynamoDBActions(unittest.TestCase):
     

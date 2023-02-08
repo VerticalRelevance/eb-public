@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from resiliencyvr.kafka.actions import blackhole_kafka
+from experimentvr.kafka.actions import blackhole_kafka
 
 class TestKafkaActions(unittest.TestCase):
     

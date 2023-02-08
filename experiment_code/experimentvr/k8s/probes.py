@@ -3,7 +3,7 @@ import sys
 import boto3
 import logging
 import time
-from resiliencyvr.ec2.shared import get_test_instance_ids
+from experimentvr.ec2.shared import get_test_instance_ids
 from botocore.exceptions import ClientError
 
 def pod_healthy(region: str = None,

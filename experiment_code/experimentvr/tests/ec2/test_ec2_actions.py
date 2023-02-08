@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from resiliencyvr.ec2.actions import stress_all_network_io, stress_io, stress_memory, stress_network_latency, stress_network_utilization, stress_packet_loss
+from experimentvr.ec2.actions import stress_all_network_io, stress_io, stress_memory, stress_network_latency, stress_network_utilization, stress_packet_loss
 
 class TestEC2Actions(unittest.TestCase):
     

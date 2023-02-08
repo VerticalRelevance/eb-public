@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from resiliencyvr.network.actions import point_inactive_dns
+from experimentvr.network.actions import point_inactive_dns
 
 class TestNetworkActions(unittest.TestCase):
 

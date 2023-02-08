@@ -5,7 +5,7 @@ import sys
 import boto3
 from typing import List
 from botocore.exceptions import ClientError
-from resiliencyvr.ec2.shared import get_test_instance_ids
+from experimentvr.ec2.shared import get_test_instance_ids
 
 logging.basicConfig(level=logging.ERROR)
 

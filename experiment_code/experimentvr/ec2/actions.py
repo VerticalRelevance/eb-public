@@ -5,7 +5,7 @@ from time import sleep
 
 import boto3
 from botocore.exceptions import ClientError
-from resiliencyvr.ec2.shared import get_test_instance_ids, get_role_from_instance_profile, get_instance_profile_name
+from experimentvr.ec2.shared import get_test_instance_ids, get_role_from_instance_profile, get_instance_profile_name
 
 
 def stress_packet_loss(targets: List[str] = None,

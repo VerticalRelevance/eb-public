@@ -3,7 +3,7 @@ from typing import List
 
 from botocore.exceptions import ClientError
 import boto3
-from resiliencyvr.kafka.shared import get_broker_endpoints
+from experimentvr.kafka.shared import get_broker_endpoints
 
 logging.basicConfig(level=logging.ERROR)
 

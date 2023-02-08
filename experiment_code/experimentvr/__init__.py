@@ -6,7 +6,7 @@ from chaoslib.discovery.discover import (discover_actions, discover_probes,
 from chaoslib.types import (DiscoveredActivities, Discovery)
 from logzero import logger
 
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 __all__ = ["__version__", "discover"]
 
 
@@ -15,7 +15,7 @@ def discover(discover_system: bool = True) -> Discovery:
     Discover GPN capabilities from this extension as well, if a GPN
     configuration is available, some information about the environment.
     """
-    logger.info("Discovering capabilities from resiliencyvr")
+    logger.info("Discovering capabilities from experimentvr")
 
     discovery = initialize_discovery_result(
         "resiliencyvr", __version__, "resiliency")

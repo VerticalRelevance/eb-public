@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from resiliencyvr.k8s.shared import install_stress_ng_on_pod
+from experimentvr.k8s.shared import install_stress_ng_on_pod
 
 class TestKubernetesActions(unittest.TestCase):
 

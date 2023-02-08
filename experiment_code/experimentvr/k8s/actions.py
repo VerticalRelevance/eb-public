@@ -3,7 +3,7 @@ import boto3
 import logging
 from typing import List
 from botocore.exceptions import ClientError
-from resiliencyvr.ec2.shared import get_test_instance_ids
+from experimentvr.ec2.shared import get_test_instance_ids
 
 
 def pod_stress_all_network_io(targets: List[str] = None,
