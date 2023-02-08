@@ -18,7 +18,7 @@ def discover(discover_system: bool = True) -> Discovery:
     logger.info("Discovering capabilities from experimentvr")
 
     discovery = initialize_discovery_result(
-        "resiliencyvr", __version__, "resiliency")
+        "experimentvr", __version__, "experiment")
     discovery["activities"].extend(load_exported_activities())
 
     return discovery

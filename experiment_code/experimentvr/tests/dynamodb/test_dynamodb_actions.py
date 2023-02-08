@@ -5,7 +5,7 @@ from experimentvr.dynamodb.actions import blackhole_dynamodb
 
 class TestDynamoDBActions(unittest.TestCase):
     
-    @patch('resiliencyvr.dynamodb.actions.boto3')
+    @patch('experimentvr.dynamodb.actions.boto3')
     def test_blackhole_dynamo(self, mock_boto3):
         blackhole_dynamodb("Name", ["node1", "node2"])
         

@@ -5,8 +5,8 @@ from experimentvr.kafka.actions import blackhole_kafka
 
 class TestKafkaActions(unittest.TestCase):
     
-    @patch('resiliencyvr.kafka.actions.get_broker_endpoints')
-    @patch('resiliencyvr.kafka.actions.boto3')
+    @patch('experimentvr.kafka.actions.get_broker_endpoints')
+    @patch('experimentvr.kafka.actions.boto3')
     def test_blackhole_kafka(self, mock_boto3, mock_endpoints):
         blackhole_kafka("kafka-cluster", "NodeName", ["node1", "node2"])
         

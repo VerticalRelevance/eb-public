@@ -5,7 +5,7 @@ from experimentvr.network.actions import point_inactive_dns
 
 class TestNetworkActions(unittest.TestCase):
 
-    @patch('resiliencyvr.network.actions.boto3')
+    @patch('experimentvr.network.actions.boto3')
     def test_point_inactive_dns(self, mock_boto3):
         point_inactive_dns("Name", ["node1", "node2"])
         

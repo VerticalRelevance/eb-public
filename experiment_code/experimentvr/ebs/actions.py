@@ -20,7 +20,7 @@ def detach_volume(region: str = None,
     # is hardcoded below - it should probably be a Python setup variable.
     command_execution_intance = get_test_instance_ids(test_target_type ='RANDOM',
                                                           tag_key = 'tag:Name',
-                                                          tag_value = 'nodes.resiliencyvr-us-east-1.k8s.local')
+                                                          tag_value = 'nodes.experimentvr-us-east-1.k8s.local')
     
 
 

@@ -5,7 +5,7 @@ from experimentvr.ec2.actions import stress_all_network_io, stress_io, stress_me
 
 class TestEC2Actions(unittest.TestCase):
     
-    @patch('resiliencyvr.ec2.actions.boto3')
+    @patch('experimentvr.ec2.actions.boto3')
     def test_packet_loss(self, mock_boto3):
         stress_packet_loss("Name", ["node1"])
         
@@ -13,7 +13,7 @@ class TestEC2Actions(unittest.TestCase):
             Targets=[{'Key': 'Name', 'Values': ['node1']}], 
             DocumentName='StressPacketLoss',
             Parameters={'interface': ['ens5'], 'portNumber': ['0'], 'portType': ['dport'], 'loss': ['50'], 'duration': ['60']})
-    @patch('resiliencyvr.ec2.actions.boto3')
+    @patch('experimentvr.ec2.actions.boto3')
     def test_stress_memory(self, mock_boto3):
         stress_memory("Name", ["node1"])
         
@@ -21,7 +21,7 @@ class TestEC2Actions(unittest.TestCase):
             Targets=[{'Key': 'Name', 'Values': ['node1']}], 
             DocumentName='StressMemory',
             Parameters={'duration': ['60'], 'workers': ['4'], 'percent' : ['99']})
-    @patch('resiliencyvr.ec2.actions.boto3')
+    @patch('experimentvr.ec2.actions.boto3')
     def test_stress_latency(self, mock_boto3):
         stress_network_latency("Name", ["node1"])
         
@@ -29,7 +29,7 @@ class TestEC2Actions(unittest.TestCase):
             Targets=[{'Key': 'Name', 'Values': ['node1']}], 
             DocumentName='NetworkLatency',
             Parameters={'duration': ['60'], 'ports': ['1'], 'portType' : ['sport'], 'delay' : ['50'], 'interface': ['ens5']})
-    @patch('resiliencyvr.ec2.actions.boto3')
+    @patch('experimentvr.ec2.actions.boto3')
     def test_stress_io(self, mock_boto3):
         stress_io("Name", ["node1"])
         
@@ -37,7 +37,7 @@ class TestEC2Actions(unittest.TestCase):
             Targets=[{'Key': 'Name', 'Values': ['node1']}], 
             DocumentName='StressIO',
             Parameters={'duration': ['60'], 'iomix': ['50'], 'percent' : ['99']})
-    @patch('resiliencyvr.ec2.actions.boto3')
+    @patch('experimentvr.ec2.actions.boto3')
     def test_stress_network_util(self, mock_boto3):
         stress_network_utilization("Name", ["node1"])
         
@@ -45,7 +45,7 @@ class TestEC2Actions(unittest.TestCase):
             Targets=[{'Key': 'Name', 'Values': ['node1']}], 
             DocumentName='StressNetworkUtilization',
             Parameters={'duration': ['60'], 'workers': ['4'], 'percent' : ['99']})
-    @patch('resiliencyvr.ec2.actions.boto3')
+    @patch('experimentvr.ec2.actions.boto3')
     def test_stress_all_network(self, mock_boto3):
         stress_all_network_io("Name", ["node1"])
         

@@ -62,7 +62,7 @@ def get_all_instance_ids_by_tag(tagKey, tagValue):
 
 def get_test_instance_ids(test_target_type: str ='RANDOM',
                               tag_key: str = 'tag:Name',
-                              tag_value: str = 'nodes.resiliencyvr-us-east-1.k8s.local',
+                              tag_value: str = 'nodes.experimentvr-us-east-1.k8s.local',
                               instance_ids: List[str] = None):
 
     function_name = sys._getframe(  ).f_code.co_name

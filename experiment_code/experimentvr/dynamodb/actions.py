@@ -54,7 +54,7 @@ def blackhole_dynamodb(targets: List[str] = None,
 
 def main():
     blackhole_dynamodb(tag_key = 'tag:Name',
- 				  		tag_value = 'nodes.resiliencyvr-us-east-1.k8s.local',
+ 				  		tag_value = 'nodes.experimentvr-us-east-1.k8s.local',
 						test_target_type ='RANDOM',
 						duration = '60')
 

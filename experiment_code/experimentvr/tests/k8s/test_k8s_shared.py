@@ -5,7 +5,7 @@ from experimentvr.k8s.shared import install_stress_ng_on_pod
 
 class TestKubernetesActions(unittest.TestCase):
 
-    @patch('resiliencyvr.k8s.shared.boto3')
+    @patch('experimentvr.k8s.shared.boto3')
     def test_install_stress_ng_on_pod(self, mock_boto3):
         install_stress_ng_on_pod("Name", ["node1", "node2"])
         

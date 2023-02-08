@@ -255,7 +255,7 @@ def delete_pod(region: str = None,
 		# Replace Master with new string - sent to this function from experiment
     command_execution_intance = get_test_instance_ids(test_target_type ='RANDOM',
                                                           tag_key = 'tag:Name',
-                                                          tag_value = 'master-us-east-1a.masters.resiliencyvr-us-east-1.k8s.local')
+                                                          tag_value = 'master-us-east-1a.masters.experimentvr-us-east-1.k8s.local')
     print(function_name, "(): instance_to_send_command= ", command_execution_intance)
 
 
