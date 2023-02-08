@@ -6,7 +6,7 @@ from chaoslib.discovery.discover import (discover_actions, discover_probes,
 from chaoslib.types import (DiscoveredActivities, Discovery)
 from logzero import logger
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 __all__ = ["__version__", "discover"]
 
 
@@ -33,9 +33,9 @@ def load_exported_activities() -> List[DiscoveredActivities]:
     """
     activities = []
 
-    activities.extend(discover_actions("resiliencyvr.s3.actions"))
-    activities.extend(discover_probes("resiliencyvr.s3.probes"))
-    activities.extend(discover_actions("resiliencyvr.ssm.actions"))
-    activities.extend(discover_probes("resiliencyvr.ssm.probes"))
+    activities.extend(discover_actions("experimentvr.s3.actions"))
+    activities.extend(discover_probes("experimentvr.s3.probes"))
+    activities.extend(discover_actions("experimentvr.ssm.actions"))
+    activities.extend(discover_probes("experimentvr.ssm.probes"))
 
     return activities
