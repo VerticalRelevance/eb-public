@@ -4,7 +4,7 @@ Repository for Experiment Broker code
 ### Clone the Repo
 First, clone this repository:
 ```shell
-git clone https://github.com/VerticalRelevance/Experiment-Broker.git
+git clone https://github.com/VerticalRelevance/Experiment-Broker-Internal-Private.git
 ```
 This repository holds the actions and probes used in the [Resiliency Testing Experiments](https://github.com/VerticalRelevance/resiliency-framework-experiments.git) repository. 
 
