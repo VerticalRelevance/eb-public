@@ -3,7 +3,7 @@ import sys
 import boto3
 import logging
 import time
-from experimentvr.ec2.shared import get_test_instance_ids
+from resiliencyvr.ec2.shared import get_test_instance_ids
 from botocore.exceptions import ClientError
 
 def pod_healthy(region: str = None,
@@ -12,6 +12,7 @@ def pod_healthy(region: str = None,
                     health_check_port: str = None,
                     health_check_path: str = None,
                     name_space: str = None,
+                    cluster_name: str = None,
                     output_s3_bucket_name: str = None,
                     pod_name_pattern: str = None) -> bool:
 
@@ -31,6 +32,9 @@ def pod_healthy(region: str = None,
         ],
         'namespace': [
             name_space,
+        ],
+        'clustername': [
+            cluster_name,
         ],
         'podHealthPort': [
             health_check_port,
