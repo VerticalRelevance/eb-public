@@ -48,6 +48,8 @@ def pod_healthy(region: str = None,
 
     print(function_name, '(): About to call ssm')
 
+    print(function_name, '(): Parameters - ', parameters)
+
     ssm = session.client('ssm', region)
     try:
         response = ssm.send_command(InstanceIds = command_execution_intance,
