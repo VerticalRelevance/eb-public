@@ -76,6 +76,7 @@ def pod_healthy(region: str = None,
         object_key_string = object.key
         pos = object_key_string.find('PodHealthCheck')
         object_keys.append(object_key_string)
+        print(function_name, '(): pos = ', pos)
         if (pos != -1): 
             contents=object.get()['Body'].read().decode(encoding='utf-8',errors='ignore')
             print(function_name, '(): contents = ', contents)
