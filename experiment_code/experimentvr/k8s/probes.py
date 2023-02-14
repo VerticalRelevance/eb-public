@@ -46,7 +46,7 @@ def pod_healthy(region: str = None,
 
     session = boto3.Session()
 
-    print(function_name, '(): About to call ssm')
+    print(function_name, '(): About to call ssm - ', parameters)
 
     print(function_name, '(): Parameters - ', parameters)
 
