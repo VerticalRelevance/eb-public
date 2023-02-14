@@ -46,7 +46,7 @@ def pod_healthy(region: str = None,
 
     session = boto3.Session()
 
-    print(function_name, '(): About to call ssm - ', parameters)
+    print(function_name, '(): About to call ssm')
 
     print(function_name, '(): Parameters - ', parameters)
 
@@ -76,10 +76,8 @@ def pod_healthy(region: str = None,
         object_key_string = object.key
         pos = object_key_string.find('podHealthCheck')
         object_keys.append(object_key_string)
-        print(function_name, '(): pos = ', pos)
         if (pos != -1): 
             contents=object.get()['Body'].read().decode(encoding='utf-8',errors='ignore')
-            print(function_name, '(): contents = ', contents)
             for pod_status in contents.splitlines():
                 print(function_name, '(): pod_status = ', pod_status)
                 if (pod_status == 'UP' or pod_status == 'Healthy'):
