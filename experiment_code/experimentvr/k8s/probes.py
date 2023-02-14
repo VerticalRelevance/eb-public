@@ -78,6 +78,7 @@ def pod_healthy(region: str = None,
         object_keys.append(object_key_string)
         if (pos != -1): 
             contents=object.get()['Body'].read().decode(encoding='utf-8',errors='ignore')
+            print(function_name, '(): contents = ', contents)
             for pod_status in contents.splitlines():
                 print(function_name, '(): pod_status = ', pod_status)
                 if (pod_status == 'UP' or pod_status == 'Healthy'):
