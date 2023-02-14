@@ -54,7 +54,7 @@ def pod_healthy(region: str = None,
     try:
         response = ssm.send_command(InstanceIds = command_execution_intance,
                                     DocumentName = 'PodHealthCheck',
-									Parameters = parameters,
+                                    Parameters = parameters,
                                     OutputS3BucketName = output_s3_bucket_name,
                                     CloudWatchOutputConfig = {
                                         'CloudWatchOutputEnabled': True}
