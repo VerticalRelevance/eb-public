@@ -74,7 +74,7 @@ def pod_healthy(region: str = None,
     for object in bucket.objects.all():
         print(function_name, '(): object.key = ', object.key)
         object_key_string = object.key
-        pos = object_key_string.find('PodHealthCheck')
+        pos = object_key_string.find('podHealthCheck')
         object_keys.append(object_key_string)
         print(function_name, '(): pos = ', pos)
         if (pos != -1): 
