@@ -80,11 +80,11 @@ def pod_healthy(region: str = None,
             contents=object.get()['Body'].read().decode(encoding='utf-8',errors='ignore')
             for pod_status in contents.splitlines():
                 print(function_name, '(): pod_status = ', pod_status)
-                if (pod_status != 'UP' or pod_status != 'Healthy'):
-                    pods_healthy = False
-                    print('Raise Activity Failed')
-                else:
+                if (pod_status == 'UP' or pod_status == 'Healthy'):
                     pods_healthy = True
+                else:
+                    print('Raise Activity Failed')
+                    pods_healthy = False
 
     objects_to_delete = []
     for object_key in object_keys:
