@@ -271,7 +271,7 @@ def delete_pod(region: str = None,
         ],
     }
 
-    folder_prefix = time.time() + '/'
+    folder_prefix = str(time.time()) + '/'
 
     session = boto3.Session()
     ssm = session.client('ssm', region)
