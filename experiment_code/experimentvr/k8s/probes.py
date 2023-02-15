@@ -51,7 +51,7 @@ def pod_healthy(region: str = None,
 
     print(function_name, '(): Parameters - ', parameters)
 
-    folder_prefix = str(time.time()) + '\\'
+    folder_prefix = str(time.time()) + '/'
 
     ssm = session.client('ssm', region)
     try:
