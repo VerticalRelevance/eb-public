@@ -46,7 +46,7 @@ type: action
     provider:
       type: python
       module: experimentvr.ec2.actions
-      func: gpn_stress_all_network_io
+      func: stress_all_network_io
       arguments:
         test_target_type: 'RANDOM'
         tag_key: 'tag:Name'
@@ -54,7 +54,7 @@ type: action
         region: 'us-east-1'
         duration: '60'
 ```
-Under `module`, the experiment refers to `experimentvr.ec2.actions`. This tells us the corresponding action is referencing the `actions.py` file under the **chaosgpn/ec2/** directory, as discussed in the folder structure section above. That is where the code for all ec2 actions are written. 
+Under `module`, the experiment refers to `experimentvr.ec2.actions`. This tells us the corresponding action is referencing the `actions.py` file under the **experimentvr/ec2/** directory, as discussed in the folder structure section above. That is where the code for all ec2 actions are written. 
 <pre>
 experimentvr
  ┣ <b>ec2</b>
@@ -81,7 +81,7 @@ Actions which require command line utilities such as `stress-ng` or `tc` will re
 
 The first step of the function is to identify the EC2 instance on which the test will run. This requires the use of a shared function, `get_test_instance_ids`. This is where we will use the arguments passed to the function. In order to use this function, you must make sure to import the function to the `actions.py` file.
 ```python
-from experimentvr.ec2.shared import gpn_get_test_instance_ids
+from experimentvr.ec2.shared import get_test_instance_ids
 ```
 We can then call the function using the arguments passed into the function such as the `tag_key`, `tag_value`, and `test_target_type`. `tag_key` is a tag key such as "tag:Name", and `tag_value` refers to the value associated with that key. The `test_target_type` parameter determines if the function returns 1 random instance-id or all instance-ids associated with that tag. These parameters are passed from the experiment.
 ```python

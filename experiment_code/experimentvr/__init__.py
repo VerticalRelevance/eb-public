@@ -12,7 +12,7 @@ __all__ = ["__version__", "discover"]
 
 def discover(discover_system: bool = True) -> Discovery:
     """
-    Discover GPN capabilities from this extension as well, if a GPN
+    Discover capabilities from this extension as well, if a
     configuration is available, some information about the environment.
     """
     logger.info("Discovering capabilities from experimentvr")

@@ -11,5 +11,5 @@ class TestDynamoDBActions(unittest.TestCase):
         
         mock_boto3.Session().client().send_command.assert_called_with(
             Targets=[{'Key': 'Name', 'Values': ['node1', 'node2']}], 
-            DocumentName='gpnBlackHoleDynamoStress',
+            DocumentName='BlackHoleDynamoStress',
             Parameters={'Key': ['duration'], 'Value': ['2']})
