@@ -248,6 +248,7 @@ def delete_pod(region: str = None,
                    tag_key = None,
                    tag_value = None,
                    name_space: str = None,
+                   output_s3_bucket_name: str = None,
                    pod_name_pattern: str = None):
 
     function_name = sys._getframe(  ).f_code.co_name
@@ -258,8 +259,8 @@ def delete_pod(region: str = None,
     command_execution_intance = get_test_instance_ids(test_target_type ='RANDOM',
                                                         tag_key = tag_key,
                                                         tag_value = tag_value)
+    
     print(function_name, "(): instance_to_send_command= ", command_execution_intance)
-
 
     parameters = {
         'namespace': [
@@ -270,6 +271,8 @@ def delete_pod(region: str = None,
         ],
     }
 
+    folder_prefix = time.time() + '\'
+
     session = boto3.Session()
     ssm = session.client('ssm', region)
     try:
@@ -279,7 +282,8 @@ def delete_pod(region: str = None,
                                         'CloudWatchOutputEnabled': True
                                     },
                                     Parameters = parameters,
-                                    OutputS3BucketName = 'resiliency-ssm-command-output')
+                                    OutputS3BucketName = output_s3_bucket_name,
+                                    OutputS3KeyPrefix = folder_prefix)
 
     except ClientError as e:
         logging.error(e)
