@@ -1,6 +1,5 @@
 from re import I
 import sys
-import time
 import boto3
 import logging
 import time
