@@ -6,7 +6,7 @@ from chaoslib.discovery.discover import (discover_actions, discover_probes,
 from chaoslib.types import (DiscoveredActivities, Discovery)
 from logzero import logger
 
-__version__ = '0.3.27'
+__version__ = '0.3.28'
 __all__ = ["__version__", "discover"]
 
 
