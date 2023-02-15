@@ -1,5 +1,6 @@
 from re import I
 import sys
+import time
 import boto3
 import logging
 import time
@@ -50,12 +51,15 @@ def pod_healthy(region: str = None,
 
     print(function_name, '(): Parameters - ', parameters)
 
+    folder_prefix = time.time() + '\'
+
     ssm = session.client('ssm', region)
     try:
         response = ssm.send_command(InstanceIds = command_execution_intance,
                                     DocumentName = 'PodHealthCheck',
                                     Parameters = parameters,
                                     OutputS3BucketName = output_s3_bucket_name,
+                                    OutputS3KeyPrefix = folder_prefix,
                                     CloudWatchOutputConfig = {
                                         'CloudWatchOutputEnabled': True}
                                     )
@@ -71,7 +75,7 @@ def pod_healthy(region: str = None,
 
     object_keys = []
 
-    for object in bucket.objects.all():
+    for object in bucket.objects.filter(Prefix=folder_prefix):
         print(function_name, '(): object.key = ', object.key)
         object_key_string = object.key
         pos = object_key_string.find('podHealthCheck')
@@ -86,15 +90,15 @@ def pod_healthy(region: str = None,
                     print('Raise Activity Failed')
                     pods_healthy = False
 
-    objects_to_delete = []
-    for object_key in object_keys:
-        objects_to_delete.append({'Key': object_key})
+    # objects_to_delete = []
+    # for object_key in object_keys:
+    #     objects_to_delete.append({'Key': object_key})
 
-    print('objects_to_delete = ', objects_to_delete)
+    # print('objects_to_delete = ', objects_to_delete)
 
-    s3_client = boto3.client('s3')
+    # s3_client = boto3.client('s3')
 
-    response = s3_client.delete_objects(Bucket = output_s3_bucket_name,
-                                        Delete = {'Objects': objects_to_delete})
+    # response = s3_client.delete_objects(Bucket = output_s3_bucket_name,
+    #                                     Delete = {'Objects': objects_to_delete})
 
     return pods_healthy
