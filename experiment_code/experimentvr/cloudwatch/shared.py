@@ -1,9 +1,6 @@
 import sys
 import boto3
 import logging
-from random import randint
-from typing import Any, Dict, List
-from pprint import pprint
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -21,5 +18,3 @@ def get_cloudwatch_metric_alarm_status(cloudwatchAlarmName):
     return_value = cloudwatch_alarm_status['MetricAlarms'][0]['StateValue']
 
     return return_value
-
-print(get_cloudwatch_metric_alarm_status("CloudWatchInAlarmTest-mhiggins"))
