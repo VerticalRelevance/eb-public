@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level=logging.ERROR)
 
 def get_cloudwatch_metric_alarm_status(cloudwatchAlarmName):
-    """Returns a str of instance IAM profile instances 'name' from a given tagname"""
+    """Returns a str of cloudwatch status from a given Cloudwatch alarm name"""
 
     function_name = sys._getframe(  ).f_code.co_name
     
