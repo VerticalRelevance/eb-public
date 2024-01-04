@@ -1,124 +1,279 @@
-## Experiment Broker
-Repository for Experiment Broker code
+# AWS Resiliency Module Pipeline Repository
 
-### Clone the Repo
-First, clone this repository:
-```shell
-git clone https://github.com/VerticalRelevance/Experiment-Broker-Internal-Private.git
-```
-This repository holds the actions and probes used in the [Resiliency Testing Experiments](https://github.com/VerticalRelevance/resiliency-framework-experiments.git) repository. 
+This is the AWS CDK CI/CD Pipeline repository for Vertical Relevance's AWS Resiliency Module. This repository consists of two CDK codebases that will deploy two separate CodePipelines. The PackagePipeline directory has CDK code that will build the resiliencyvr Python package and upload it to CodeAritifact. This package is a requirement for the resiliency execution Lambda, so it must be deployed first. The LambdaPipeline has CDK code that will deploy the resiliency execution Lambda. Deploy the LambdaPipeline CDK after ResiliencyPipeline.
 
-### Installation
-Before installing the code dependencies, we recommend installing and preparing a virtual environment
+## Prior to starting the setup of the CDK environment, ensure that you have cloned this repo and installed v2.28.0 of the CDK cli tool. 
 
-#### MacOS
-First, install pyenv and pyenv virtual-env to allow the creation of new environments. You must then configure your shell to use it. Note: this installation requires [Homebrew](https://brew.sh/) to be installed as well. If it is not, follow the instructions on the linked page to install.
-```sh
-brew install pyenv pyenv-virtualenv
-echo 'eval "$(pyenv init --path)"' >> ~/.zprofile
-echo 'eval "$(pyenv init -)"' >> ~/.zshrc
-eval "$(pyenv virtualenv-init -)"  >> ~/.zshrc
-```
-Then, you will need install the version of python which is used by the lambda. You can then create a virtual environment and name it as you please.
+## Follow the setup steps below to properly configure the environment and first deployment of the infrastructure.
+
+Create a Python virtualenv using the tool of your choice.
+To manually create a virtualenv on MacOS and Linux:
 
 ```
-pyenv install 3.8.11
-pyenv virtualenv 3.8.11 <env_name>
+$ python3 -m venv .venv
 ```
 
-Then, use the `requirements.txt` file to install the dependencies necessary for development.
+After the init process completes and the virtualenv is created, you can use the following
+step to activate your virtualenv.
+
 ```
-cd experimentvr
-pip install -r requirements.txt
-```
-You are now set to begin creating actions and probes.
-## Creating Actions and Probes
-
-Actions and probes are the way that an experiment is able to both induce failure in the environment and get information from the environment. 
-* **Actions**:  Python functions referenced by experiments which either induce failure or have some sort of effect on the environment. 
-* **Probes**: Python functions which retrieve information from the environment.
-
-
-Imagine a new experiment is written to stress all network I/O. The experiment will need to reference an action to accomplish this failure. The YAML code referencing the action in the experiment is shown here:
-```YAML
-type: action
-    name: black_hole_network
-    provider:
-      type: python
-      module: experimentvr.ec2.actions
-      func: stress_all_network_io
-      arguments:
-        test_target_type: 'RANDOM'
-        tag_key: 'tag:Name'
-        tag_value: 'node_value'
-        region: 'us-east-1'
-        duration: '60'
-```
-Under `module`, the experiment refers to `experimentvr.ec2.actions`. This tells us the corresponding action is referencing the `actions.py` file under the **experimentvr/ec2/** directory, as discussed in the folder structure section above. That is where the code for all ec2 actions are written. 
-<pre>
-experimentvr
- ┣ <b>ec2</b>
- ┃ ┣ __init__.py
- ┃ ┣ <b>actions.py</b>
- ┃ ┗ shared.py
- </pre>
-
-Many custom functions are required to have these arguments: 
- * `test_target_type` :  'ALL' or 'RANDOM'. Determines if the action/probe is run on 1 randomly selected instance or all instances.
- * `test_target_key`  :  'tag:Name'. The tag key of the tag used to identify the instance(s) the action/probe is run on.
- * `test_target_value` : The tage value used to identify the instance(s) to run the action/probe on.
- 
-Actions which require command line utilities such as `stress-ng` or `tc` will require the use of an SSM document. For the Stress Network I/O function, we will need a duration of time for the failure to take place. Since this action will require the use of a command line utility, we will use an SSM document in this example. The function header for our Stress Network I/O function will look like this: 
-
- ```Python
- def stress_all_network_io(targets: List[str] = None,
-							   test_target_type: str ='RANDOM',
-							   tag_key: str = None, 
-							   tag_value: str = None, 
-				  			   region: str = 'us-east-1',
-							   duration: str = None):
+$ source .venv/bin/activate
 ```
 
-The first step of the function is to identify the EC2 instance on which the test will run. This requires the use of a shared function, `get_test_instance_ids`. This is where we will use the arguments passed to the function. In order to use this function, you must make sure to import the function to the `actions.py` file.
-```python
-from experimentvr.ec2.shared import get_test_instance_ids
+If you are on a Windows platform, you would activate the virtualenv like this:
+
 ```
-We can then call the function using the arguments passed into the function such as the `tag_key`, `tag_value`, and `test_target_type`. `tag_key` is a tag key such as "tag:Name", and `tag_value` refers to the value associated with that key. The `test_target_type` parameter determines if the function returns 1 random instance-id or all instance-ids associated with that tag. These parameters are passed from the experiment.
-```python
-test_instance_ids = get_test_instance_ids(test_target_type = test_target_type, tag_key = tag_key, tag_value = tag_value)
-```
-Next, we set the parameters required for the SSM document. 
-```python
-parameters = {'duration': [duration,]}
-```
-Since we are using a command line utility to complete this action, this action calls an SSM document, "StressAllNetworkIO". This is done via [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html). First we create a boto3 ssm client, then use that ssm client to issue a Systems Manager `runCommand` using the SSM Document  "StressAllNetworkIO". Then, we use the boto3 `send_command` function to run our commands. 
-Some of the parameters sent via boto3:
-* `DocumentName`: The name of the SSM document which to run
-* `InstanceIds`: the instance-ids of the instance too run the commands on.
-* `CloudwatchOutputConfig`: Determines if the output is sent to CloudWatch for monitoring purposes.
-* `OutputS3BucketName`: Gives the name of the S3 bucket used for SSM stdout. For monitoring purposes like CloudWatch
-* `Parameters`: This is the list of parameters to be sent to the SSM document being run by this function. These parameters were set in the last step. 
- 
-We also attempt to catch any ClientErrors returned by the boto3 function call. 
-```python
-session = boto3.Session()
-ssm = session.client('ssm', region)
-	try:
-		response = ssm.send_command(DocumentName = "StressAllNetworkIO",
-									InstanceIds = test_instance_ids,
-									CloudWatchOutputConfig = {
-                                		'CloudWatchOutputEnabled':True
-                                    },
-                                    OutputS3BucketName = 'experiment-ssm-command-output'
-									Parameters = parameters)
-	except ClientError as e:
-		logging.error(e)
-		raise
-return response
+% .venv\Scripts\activate.bat
 ```
 
-We then return the response from boto3 as the result of the action. This concludes the body of the function. We have now written our first action to go along with an experiment! Please refer to [Resiliency Testing Experiments](https://github.com/VerticalRelevance/resiliency-framework-experiments.git) repository to learn about Experiment creation in YAML.
+Once the virtualenv is activated, you can install the required dependencies.
 
-## Deployment
-Deploy using the CI/CD pipeline of your choice. An example CDK and AWS CodePipeline-based build is included in another repo called  "Exeriment-Pipeline" 
-To start, simply issue `cdk deploy` in the `pipeline_infra` directory of this repository.
+```
+$ pip install -r requirements.txt
+```
+
+## Deploy the CDK
+### Run the below commands in PackagePipeline, then in LambdaPipeline
+Navigate to the pipeline dir.
+
+```
+cd pipeline_infra
+```
+
+Bootstrap the cdk app.
+
+```
+cdk bootstrap
+```
+
+At this point you can deploy the CDK app for this blueprint.
+
+```
+$ cdk deploy --all
+```
+IAM Statement Changes needed to deploy the stacks
+```
+IAM Statement Changes
+┌───┬───────────────────────────────────────────────┬────────┬───────────────────────────────────────────────┬───────────────────────────────────────────────┬─────────────────────────────────────────────────┐
+│   │ Resource                                      │ Effect │ Action                                        │ Principal                                     │ Condition                                       │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${Custom::S3AutoDeleteObjectsCustomResourcePr │ Allow  │ sts:AssumeRole                                │ Service:lambda.amazonaws.com                  │                                                 │
+│   │ ovider/Role.Arn}                              │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${MyCfnDomain.Arn}                            │ Allow  │ codeartifact:PublishPackageVersion            │ AWS:*                                         │                                                 │
+│ + │ ${MyCfnDomain.Arn}                            │ Allow  │ codeartifact:DescribePackageVersion           │ AWS:*                                         │                                                 │
+│   │                                               │        │ codeartifact:DescribeRepository               │                                               │                                                 │
+│   │                                               │        │ codeartifact:GetAuthorizationToken            │                                               │                                                 │
+│   │                                               │        │ codeartifact:GetPackageVersionReadme          │                                               │                                                 │
+│   │                                               │        │ codeartifact:GetRepositoryEndpoint            │                                               │                                                 │
+│   │                                               │        │ codeartifact:ListPackageVersionAssets         │                                               │                                                 │
+│   │                                               │        │ codeartifact:ListPackageVersionDependencies   │                                               │                                                 │
+│   │                                               │        │ codeartifact:ListPackageVersions              │                                               │                                                 │
+│   │                                               │        │ codeartifact:ListPackages                     │                                               │                                                 │
+│   │                                               │        │ codeartifact:ReadFromRepository               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${MyCfnDomain.Arn}                            │ Allow  │ codeartifact:GetAuthorizationToken            │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ ${MyCfnDomain.Arn}/*                          │        │ codeartifact:GetRepositoryEndpoint            │                                               │                                                 │
+│   │ ${cfn_repository_res_ca_dev.Arn}              │        │                                               │                                               │                                                 │
+│ + │ ${MyCfnDomain.Arn}                            │ Allow  │ codeartifact:GetAuthorizationToken            │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ ${MyCfnDomain.Arn}/*                          │        │ codeartifact:GetRepositoryEndpoint            │                                               │                                                 │
+│   │ ${cfn_repository_res_ca_dev.Arn}              │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${cdk_deploy.Arn}                             │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${lambda_pipeline/Deploy/Deploy/CodePipel │                                                 │
+│   │                                               │        │ codebuild:StartBuild                          │ ineActionRole}                                │                                                 │
+│   │                                               │        │ codebuild:StopBuild                           │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${code_pipeline_bucket.Arn}                   │ Allow  │ s3:Abort*                                     │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ ${code_pipeline_bucket.Arn}/*                 │        │ s3:DeleteObject*                              │                                               │                                                 │
+│   │                                               │        │ s3:PutObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectLegalHold                         │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectRetention                         │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectTagging                           │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectVersionTagging                    │                                               │                                                 │
+│ + │ ${code_pipeline_bucket.Arn}                   │ Allow  │ s3:DeleteObject*                              │ AWS:${Custom::S3AutoDeleteObjectsCustomResour │                                                 │
+│   │ ${code_pipeline_bucket.Arn}/*                 │        │ s3:GetBucket*                                 │ ceProvider/Role.Arn}                          │                                                 │
+│   │                                               │        │ s3:List*                                      │                                               │                                                 │
+│ + │ ${code_pipeline_bucket.Arn}                   │ Allow  │ s3:GetBucketVersioning                        │ AWS:${resiliencyvr-package-build-pipeline-rol │                                                 │
+│   │ ${code_pipeline_bucket.Arn}/*                 │        │ s3:GetObject                                  │ e}                                            │                                                 │
+│   │                                               │        │ s3:GetObjectVersion                           │                                               │                                                 │
+│   │                                               │        │ s3:PutObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectAcl                               │                                               │                                                 │
+│ + │ ${code_pipeline_bucket.Arn}                   │ Allow  │ s3:GetBucketVersioning                        │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ ${code_pipeline_bucket.Arn}/*                 │        │ s3:GetObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:GetObjectVersion                           │                                               │                                                 │
+│   │                                               │        │ s3:PutObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectAcl                               │                                               │                                                 │
+│ + │ ${code_pipeline_bucket.Arn}                   │ Allow  │ s3:GetBucketVersioning                        │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ ${code_pipeline_bucket.Arn}/*                 │        │ s3:GetObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:GetObjectVersion                           │                                               │                                                 │
+│   │                                               │        │ s3:PutObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectAcl                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${lambda_pipeline/ArtifactsBucket.Arn}        │ Allow  │ s3:GetBucket*                                 │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ ${lambda_pipeline/ArtifactsBucket.Arn}/*      │        │ s3:GetObject*                                 │                                               │                                                 │
+│   │                                               │        │ s3:List*                                      │                                               │                                                 │
+│ + │ ${lambda_pipeline/ArtifactsBucket.Arn}        │ Deny   │ s3:*                                          │ AWS:*                                         │ "Bool": {                                       │
+│   │ ${lambda_pipeline/ArtifactsBucket.Arn}/*      │        │                                               │                                               │   "aws:SecureTransport": "false"                │
+│   │                                               │        │                                               │                                               │ }                                               │
+│ + │ ${lambda_pipeline/ArtifactsBucket.Arn}        │ Allow  │ s3:Abort*                                     │ AWS:${lambda_pipeline/Role}                   │                                                 │
+│   │ ${lambda_pipeline/ArtifactsBucket.Arn}/*      │        │ s3:DeleteObject*                              │                                               │                                                 │
+│   │                                               │        │ s3:GetBucket*                                 │                                               │                                                 │
+│   │                                               │        │ s3:GetObject*                                 │                                               │                                                 │
+│   │                                               │        │ s3:List*                                      │                                               │                                                 │
+│   │                                               │        │ s3:PutObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectLegalHold                         │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectRetention                         │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectTagging                           │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectVersionTagging                    │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${lambda_pipeline/ArtifactsBucketEncryptionKe │ Allow  │ kms:*                                         │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
+│   │ y.Arn}                                        │        │                                               │ Id}:root                                      │                                                 │
+│ + │ ${lambda_pipeline/ArtifactsBucketEncryptionKe │ Allow  │ kms:Decrypt                                   │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ y.Arn}                                        │        │ kms:DescribeKey                               │                                               │                                                 │
+│ + │ ${lambda_pipeline/ArtifactsBucketEncryptionKe │ Allow  │ kms:Decrypt                                   │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ y.Arn}                                        │        │ kms:Encrypt                                   │                                               │                                                 │
+│   │                                               │        │ kms:GenerateDataKey*                          │                                               │                                                 │
+│   │                                               │        │ kms:ReEncrypt*                                │                                               │                                                 │
+│ + │ ${lambda_pipeline/ArtifactsBucketEncryptionKe │ Allow  │ kms:Decrypt                                   │ AWS:${lambda_pipeline/Role}                   │                                                 │
+│   │ y.Arn}                                        │        │ kms:DescribeKey                               │                                               │                                                 │
+│   │                                               │        │ kms:Encrypt                                   │                                               │                                                 │
+│   │                                               │        │ kms:GenerateDataKey*                          │                                               │                                                 │
+│   │                                               │        │ kms:ReEncrypt*                                │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${lambda_pipeline/Deploy/Deploy/CodePipelineA │ Allow  │ sts:AssumeRole                                │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
+│   │ ctionRole.Arn}                                │        │                                               │ Id}:root                                      │                                                 │
+│ + │ ${lambda_pipeline/Deploy/Deploy/CodePipelineA │ Allow  │ sts:AssumeRole                                │ AWS:${lambda_pipeline/Role}                   │                                                 │
+│   │ ctionRole.Arn}                                │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${lambda_pipeline/Role.Arn}                   │ Allow  │ sts:AssumeRole                                │ Service:codepipeline.amazonaws.com            │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${res-ca-dev-repo-key.Arn}                    │ Allow  │ kms:*                                         │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
+│   │                                               │        │                                               │ Id}:root                                      │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_codebuild_lambda_role.Arn}     │ Allow  │ sts:AssumeRole                                │ Service:codebuild.amazonaws.com               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_codebuild_package_role.Arn}    │ Allow  │ sts:AssumeRole                                │ Service:codebuild.amazonaws.com               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_codebuild_project.Arn}         │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${resiliencyvr_pipeline/Build/Build/CodeP │                                                 │
+│   │                                               │        │ codebuild:StartBuild                          │ ipelineActionRole}                            │                                                 │
+│   │                                               │        │ codebuild:StopBuild                           │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr-package-build-pipeline-role.Ar │ Allow  │ sts:AssumeRole                                │ Service:codepipeline.amazonaws.com            │                                                 │
+│   │ n}                                            │        │                                               │                                               │                                                 │
+│ + │ ${resiliencyvr-package-build-pipeline-role.Ar │ Allow  │ sts:AssumeRole                                │ Service:codebuild.amazonaws.com               │                                                 │
+│   │ n}                                            │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucket.Arn}  │ Allow  │ s3:GetBucket*                                 │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ ${resiliencyvr_pipeline/ArtifactsBucket.Arn}/ │        │ s3:GetObject*                                 │                                               │                                                 │
+│   │ *                                             │        │ s3:List*                                      │                                               │                                                 │
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucket.Arn}  │ Deny   │ s3:*                                          │ AWS:*                                         │ "Bool": {                                       │
+│   │ ${resiliencyvr_pipeline/ArtifactsBucket.Arn}/ │        │                                               │                                               │   "aws:SecureTransport": "false"                │
+│   │ *                                             │        │                                               │                                               │ }                                               │
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucket.Arn}  │ Allow  │ s3:Abort*                                     │ AWS:${resiliencyvr_pipeline/Role}             │                                                 │
+│   │ ${resiliencyvr_pipeline/ArtifactsBucket.Arn}/ │        │ s3:DeleteObject*                              │                                               │                                                 │
+│   │ *                                             │        │ s3:GetBucket*                                 │                                               │                                                 │
+│   │                                               │        │ s3:GetObject*                                 │                                               │                                                 │
+│   │                                               │        │ s3:List*                                      │                                               │                                                 │
+│   │                                               │        │ s3:PutObject                                  │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectLegalHold                         │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectRetention                         │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectTagging                           │                                               │                                                 │
+│   │                                               │        │ s3:PutObjectVersionTagging                    │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucketEncryp │ Allow  │ kms:*                                         │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
+│   │ tionKey.Arn}                                  │        │                                               │ Id}:root                                      │                                                 │
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucketEncryp │ Allow  │ kms:Decrypt                                   │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ tionKey.Arn}                                  │        │ kms:DescribeKey                               │                                               │                                                 │
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucketEncryp │ Allow  │ kms:Decrypt                                   │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ tionKey.Arn}                                  │        │ kms:Encrypt                                   │                                               │                                                 │
+│   │                                               │        │ kms:GenerateDataKey*                          │                                               │                                                 │
+│   │                                               │        │ kms:ReEncrypt*                                │                                               │                                                 │
+│ + │ ${resiliencyvr_pipeline/ArtifactsBucketEncryp │ Allow  │ kms:Decrypt                                   │ AWS:${resiliencyvr_pipeline/Role}             │                                                 │
+│   │ tionKey.Arn}                                  │        │ kms:DescribeKey                               │                                               │                                                 │
+│   │                                               │        │ kms:Encrypt                                   │                                               │                                                 │
+│   │                                               │        │ kms:GenerateDataKey*                          │                                               │                                                 │
+│   │                                               │        │ kms:ReEncrypt*                                │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_pipeline/Build/Build/CodePipel │ Allow  │ sts:AssumeRole                                │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
+│   │ ineActionRole.Arn}                            │        │                                               │ Id}:root                                      │                                                 │
+│ + │ ${resiliencyvr_pipeline/Build/Build/CodePipel │ Allow  │ sts:AssumeRole                                │ AWS:${resiliencyvr_pipeline/Role}             │                                                 │
+│   │ ineActionRole.Arn}                            │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ ${resiliencyvr_pipeline/Role.Arn}             │ Allow  │ sts:AssumeRole                                │ Service:codepipeline.amazonaws.com            │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ *                                             │ Allow  │ logs:CreateLogGroup                           │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │                                               │        │ logs:CreateLogStream                          │                                               │                                                 │
+│   │                                               │        │ logs:PutLogEvents                             │                                               │                                                 │
+│ + │ *                                             │ Allow  │ sts:GetServiceBearerToken                     │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│ + │ *                                             │ Allow  │ cloudformation:DescribeStacks                 │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │                                               │        │ codepipeline:GetPipeline                      │                                               │                                                 │
+│   │                                               │        │ codepipeline:GetPipelineState                 │                                               │                                                 │
+│   │                                               │        │ logs:CreateLogGroup                           │                                               │                                                 │
+│   │                                               │        │ logs:CreateLogStream                          │                                               │                                                 │
+│   │                                               │        │ logs:PutLogEvents                             │                                               │                                                 │
+│   │                                               │        │ ssm:GetParameter                              │                                               │                                                 │
+│   │                                               │        │ sts:GetServiceBearerToken                     │                                               │                                                 │
+│ + │ *                                             │ Allow  │ lambda:ListAliases                            │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │                                               │        │ lambda:ListCodeSigningConfigs                 │                                               │                                                 │
+│   │                                               │        │ lambda:ListEventSourceMappings                │                                               │                                                 │
+│   │                                               │        │ lambda:ListFunctionEventInvokeConfigs         │                                               │                                                 │
+│   │                                               │        │ lambda:ListFunctionUrlConfigs                 │                                               │                                                 │
+│   │                                               │        │ lambda:ListFunctions                          │                                               │                                                 │
+│   │                                               │        │ lambda:ListFunctionsByCodeSigningConfig       │                                               │                                                 │
+│   │                                               │        │ lambda:ListLayerVersions                      │                                               │                                                 │
+│   │                                               │        │ lambda:ListLayers                             │                                               │                                                 │
+│   │                                               │        │ lambda:ListProvisionedConcurrencyConfigs      │                                               │                                                 │
+│   │                                               │        │ lambda:ListTags                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:${AWS::Partition}:codebuild:${AWS::Region │ Allow  │ codebuild:BatchPutCodeCoverages               │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ }:${AWS::AccountId}:report-group/${cdkdeploy2 │        │ codebuild:BatchPutTestCases                   │                                               │                                                 │
+│   │ BDC7964}-*                                    │        │ codebuild:CreateReport                        │                                               │                                                 │
+│   │                                               │        │ codebuild:CreateReportGroup                   │                                               │                                                 │
+│   │                                               │        │ codebuild:UpdateReport                        │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:${AWS::Partition}:codebuild:${AWS::Region │ Allow  │ codebuild:BatchPutCodeCoverages               │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ }:${AWS::AccountId}:report-group/${resiliency │        │ codebuild:BatchPutTestCases                   │                                               │                                                 │
+│   │ vrcodebuildproject7F264C94}-*                 │        │ codebuild:CreateReport                        │                                               │                                                 │
+│   │                                               │        │ codebuild:CreateReportGroup                   │                                               │                                                 │
+│   │                                               │        │ codebuild:UpdateReport                        │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:${AWS::Partition}:logs:${AWS::Region}:${A │ Allow  │ logs:CreateLogGroup                           │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ WS::AccountId}:log-group:/aws/codebuild/${cdk │        │ logs:CreateLogStream                          │                                               │                                                 │
+│   │ deploy2BDC7964}                               │        │ logs:PutLogEvents                             │                                               │                                                 │
+│   │ arn:${AWS::Partition}:logs:${AWS::Region}:${A │        │                                               │                                               │                                                 │
+│   │ WS::AccountId}:log-group:/aws/codebuild/${cdk │        │                                               │                                               │                                                 │
+│   │ deploy2BDC7964}:*                             │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:${AWS::Partition}:logs:${AWS::Region}:${A │ Allow  │ logs:CreateLogGroup                           │ AWS:${resiliencyvr_codebuild_package_role}    │                                                 │
+│   │ WS::AccountId}:log-group:/aws/codebuild/${res │        │ logs:CreateLogStream                          │                                               │                                                 │
+│   │ iliencyvrcodebuildproject7F264C94}            │        │ logs:PutLogEvents                             │                                               │                                                 │
+│   │ arn:${AWS::Partition}:logs:${AWS::Region}:${A │        │                                               │                                               │                                                 │
+│   │ WS::AccountId}:log-group:/aws/codebuild/${res │        │                                               │                                               │                                                 │
+│   │ iliencyvrcodebuildproject7F264C94}:*          │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:aws:codebuild:${AWS::Region}:${AWS::Accou │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${resiliencyvr-package-build-pipeline-rol │                                                 │
+│   │ ntId}:project/resiliencyvr-package-codebuild  │        │ codebuild:StartBuild                          │ e}                                            │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:aws:codestar-connections:region:account-i │ Allow  │ codestar-connections:UseConnection            │ AWS:${resiliencyvr-package-build-pipeline-rol │                                                 │
+│   │ d:connection/connection-id                    │        │                                               │ e}                                            │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:aws:iam::${AWS::AccountId}:role/cdk-*-dep │ Allow  │ iam:PassRole                                  │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ loy-role-*                                    │        │ sts:AssumeRole                                │                                               │                                                 │
+│   │ arn:aws:iam::${AWS::AccountId}:role/cdk-*-fil │        │                                               │                                               │                                                 │
+│   │ e-publishing-*                                │        │                                               │                                               │                                                 │
+│   │ arn:aws:iam::${AWS::AccountId}:role/cdk-readO │        │                                               │                                               │                                                 │
+│   │ nlyRole                                       │        │                                               │                                               │                                                 │
+├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+│ + │ arn:aws:lambda:${AWS::Region}:${AWS::AccountI │ Allow  │ lambda:CreateFunction                         │ AWS:${resiliencyvr_codebuild_lambda_role}     │                                                 │
+│   │ d}:function:ExperimentLambdaFunction          │        │ lambda:DeleteFunction                         │                                               │                                                 │
+│   │                                               │        │ lambda:GetCodeSigningConfig                   │                                               │                                                 │
+│   │                                               │        │ lambda:GetFunction                            │                                               │                                                 │
+│   │                                               │        │ lambda:GetFunctionCodeSigningConfig           │                                               │                                                 │
+└───┴───────────────────────────────────────────────┴────────┴───────────────────────────────────────────────┴───────────────────────────────────────────────┴─────────────────────────────────────────────────┘
+IAM Policy Changes
+┌───┬───────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────┐
+│   │ Resource                                                  │ Managed Policy ARN                                                                           │
+├───┼───────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────┤
+│ + │ ${Custom::S3AutoDeleteObjectsCustomResourceProvider/Role} │ {"Fn::Sub":"arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"} │
+└───┴───────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────┘
+```

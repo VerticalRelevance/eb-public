@@ -1,0 +1,5 @@
+boto3==1.26.91
+chaostoolkit==1.9.1
+chaostoolkit-aws==0.16.0
+chaostoolkit-kubernetes==0.25.1
+experimentvr
