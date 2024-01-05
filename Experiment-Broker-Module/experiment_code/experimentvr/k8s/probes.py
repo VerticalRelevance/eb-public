@@ -4,15 +4,15 @@ import boto3
 import logging
 import time
 import json
-import kubernetes
 import inspect
-import pytz
 
+from chaoslib import ActivityFailed
 from logzero import logger
 from kubernetes.client import *
 from datetime import datetime, timedelta
 from experimentvr.k8s.shared import get_eks_api_client
 from experimentvr.ec2.shared import get_test_instance_ids
+from experimentvr.ssm.shared import run_ssm_doc
 from botocore.exceptions import ClientError
 
 
@@ -78,6 +78,80 @@ def assert_pod_healthy(
         logger.exception(e)
 
 
+def assert_pod_rebuilt(
+    cluster_name: str, pod_name: str, namespace: str, region: str = "us-east-1"
+) -> bool:
+    api_client = api_client = get_eks_api_client(
+        cluster_name=cluster_name, region=region
+    )
+    v1: CoreV1Api = CoreV1Api(api_client=api_client)
+    time.sleep(5)
+    pods = v1.list_pod_for_all_namespaces(watch=False)
+    ready_status_count = 0
+    for pod in pods.items:
+        if pod_name in pod.metadata.name and pod.metadata.namespace == namespace:
+            pod_statuses = pod.status.conditions
+            for status in pod_statuses:
+                if status.type == "Ready" and status.status == "True":
+                    ready_status_count += 1
+    return ready_status_count > 1
+
+
+def assert_service_on_pod_running(
+    process_name: str,
+    container_name_pattern: str,
+    region: str,
+    output_s3_bucket_name: str,
+    tag_value: str,
+    tag_key: str = "tag:Name",
+    num_instances_to_target: str = "RANDOM",
+    num_containers_to_target: str = "RANDOM",
+):
+    function_name = inspect.stack()[0][3]
+    command_execution_instance = get_test_instance_ids(
+        test_target_type=num_instances_to_target,
+        tag_key=tag_key,
+        tag_value=tag_value,
+        region=region,
+    )
+    parameters = {
+        "containerNamePattern": [
+            container_name_pattern,
+        ],
+        "numContainersToTarget": [
+            num_containers_to_target,
+        ],
+        "processName": [
+            process_name,
+        ],
+    }
+    session = boto3.Session()
+    ssm = session.client("ssm")
+    try:
+        response = ssm.send_command(
+            InstanceIds=command_execution_instance,
+            DocumentName="PodProcessInContainerCheck",
+            Parameters=parameters,
+        )
+    except ClientError as e:
+        logger.error(e)
+        raise
+
+    time.sleep(10)
+    command_response = ssm.list_command_invocations(
+        CommandId=response["Command"]["CommandID"], Details=True
+    )
+
+    for invocation in command_response["CommandInvocations"]:
+        command_output = invocation["CommandPlugins"][0]["Output"]
+        pod_process_statusses = command_output.splitlines()
+        for process_status in pod_process_statusses:
+            if process_status != "UP":
+                logger.error(f"{function_name}(): {process_name} not UP!")
+                raise ActivityFailed(f"Process {process_name} not up")
+    return True
+
+
 def pod_healthy(
     region: str = None,
     tag_key=None,
@@ -89,15 +163,15 @@ def pod_healthy(
     output_s3_bucket_name: str = None,
     pod_name_pattern: str = None,
 ) -> bool:
-    function_name = sys._getframe().f_code.co_name
+    function_name = inspect.stack()[0][3]
 
     # The instance on which we run the SSM Document that checks the health of
     # the pod is hardcoded below - it should probably be a Python
     # setup variable or passed in from experiment.
-    command_execution_intance = get_test_instance_ids(
+    command_execution_instance = get_test_instance_ids(
         test_target_type="RANDOM", tag_key=tag_key, tag_value=tag_value
     )
-    print(function_name, "(): instance_to_send_command= ", command_execution_intance)
+    print(function_name, "(): instance_to_send_command= ", command_execution_instance)
 
     parameters = {
         "podNamePattern": [
@@ -126,7 +200,7 @@ def pod_healthy(
     ssm = session.client("ssm", region)
     try:
         response = ssm.send_command(
-            InstanceIds=command_execution_intance,
+            InstanceIds=command_execution_instance,
             DocumentName="PodHealthCheck",
             Parameters=parameters,
             OutputS3BucketName=output_s3_bucket_name,
@@ -161,6 +235,7 @@ def pod_healthy(
                 else:
                     print("Raise Activity Failed")
                     pods_healthy = False
+                    raise ActivityFailed()
 
     # objects_to_delete = []
     # for object_key in object_keys:

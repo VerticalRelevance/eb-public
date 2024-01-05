@@ -1,185 +1,47 @@
+import json
+import os
 import sys
+import boto3
+import time
 import logging
-from typing import List
-from time import sleep
+import inspect
+import threading
+from logzero import logger
 
 import boto3
+from experimentvr.enums import ParameterMapFailuremode
+from chaoslib import ActivityFailed
+from datetime import datetime, timedelta
+from typing import List
 from botocore.exceptions import ClientError
 from experimentvr.ec2.shared import (
     get_test_instance_ids,
     get_role_from_instance_profile,
     get_instance_profile_name,
 )
+from experimentvr.ssm.shared import (
+    run_ssm_doc,
+    run_ssm_doc_multistage,
+    process_ssm_response,
+)
 
 
-def stress_packet_loss(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    duration: str = None,
-    interface: str = None,
-    loss: int = None,
-    port_number: int = None,
-    port_type: str = None,
-):
-    """
-    Runs SSM command StressPacketLoss.yml on all targets with
-    specified tag key and value to cause packet loss specified port
-    """
-
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
-    )
-
-    parameters = {
-        "interface": [
-            interface,
-        ],
-        "portNumber": [
-            port_number,
-        ],
-        "portType": [
-            port_type,
-        ],
-        "loss": [
-            loss,
-        ],
-        "duration": [
-            duration,
-        ],
-    }
-
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-
-    try:
-        response = ssm.send_command(
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            DocumentName="StressPacketLoss",
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return response
-
-
-def stress_memory(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    duration: str = None,
-    memory_percentage_per_worker: str = None,
-    number_of_workers: str = None,
-):
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
-    )
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "workers": [
-            number_of_workers,
-        ],
-        "percent": [
-            memory_percentage_per_worker,
-        ],
-    }
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressMemory",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return True
-
-
-def stress_cpu(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    duration: str = None,
-    cpu: str = None,
-):
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
-    )
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "cpu": [
-            cpu,
-        ],
-    }
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressCPU",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return True
-
-
-def stress_network_latency(
-    targets: List[str] = None,
+def ec2_stress_packet_loss(
+    targets: list[str] = None,
     test_target_type: str = "RANDOM",
     tag_key: str = None,
     tag_value: str = None,
     region: str = "us-east-1",
-    interface: str = None,
-    ports: str = None,
-    port_type: str = None,
-    delay: str = None,
-    duration: str = None,
+    ec2_stress_packet_port_type: str = "sport",
+    ec2_stress_packet_port_number: str = "0",
+    ec2_stress_packet_loss_percent: str = "90",
+    ec2_stress_packet_duration: str = "60",
+    ec2_stress_packet_interface: str = "eth0",
+    max_duration: str = "900",
+    ec2_stress_packet_loss_parameter_map: dict[str, dict] = {},
+    ec2_stress_packet_loss_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
 ):
-    function_name = sys._getframe().f_code.co_name
+    function_name = inspect.stack()[0][3]
 
     test_instance_ids = get_test_instance_ids(
         test_target_type=test_target_type,
@@ -187,249 +49,70 @@ def stress_network_latency(
         tag_value=tag_value,
         instance_ids=targets,
     )
-    print(function_name, "(): test_instance_ids= ", test_instance_ids)
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
 
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "ports": [
-            ports,
-        ],
-        "portType": [
-            port_type,
-        ],
-        "delay": [
-            delay,
-        ],
-        "interface": [
-            interface,
-        ],
+    def_ssm_doc_params = {
+        "duration": [ec2_stress_packet_duration],
+        "interface": [ec2_stress_packet_interface],
+        "portType": [ec2_stress_packet_port_type],
+        "portNumber": [ec2_stress_packet_port_number],
+        "loss": [ec2_stress_packet_loss_percent],
     }
 
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressNetworkLatency",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_stress_packet_loss_parameter_map:
+        ec2_stress_packet_loss_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_stress_packet_loss_parameter_map[x]["duration"][0])
+        for x in ec2_stress_packet_loss_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
-    except ClientError as e:
-        logging.error(e)
-        raise
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
 
-    return response
-
-
-def stress_io(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    duration: str = None,
-    iomix: str = None,
-    percent: str = None,
-):
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
+    results = run_ssm_doc_multistage(
+        doc_name="StressPacketLoss",
+        failure_mode=ec2_stress_packet_loss_failure_mode,
+        param_map=ec2_stress_packet_loss_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
     )
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "iomix": [
-            iomix,
-        ],
-        "percent": [
-            percent,
-        ],
-    }
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressIO",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
         )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return response
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
 
 
-def stress_network_utilization(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    interface: str = None,
-    port_number: str = None,
-    port_type: str = None,
-    rate: str = None,
-    duration: str = None,
-):
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
-    )
-
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    parameters = {
-        "interface": [
-            interface,
-        ],
-        "portNumber": [
-            port_number,
-        ],
-        "portType": [
-            port_type,
-        ],
-        "rate": [
-            rate,
-        ],
-        "duration": [
-            duration,
-        ],
-    }
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressNetworkUtilization",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return response
-
-
-def stress_all_network_io(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    duration: str = None,
-):
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
-    )
-    print(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    parameters = {
-        "duration": [
-            duration,
-        ],
-    }
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressAllNetworkIO",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return response
-
-
-def root_vol_exhaustion(
-    targets: List[str] = None,
-    test_target_type: str = None,
-    tag_key: str = None,
-    tag_value: str = None,
-    region: str = None,
-    workers: str = None,
-    filesize: str = None,
-    duration: str = None,
-):
-    function_name = sys._getframe().f_code.co_name
-
-    test_instance_ids = get_test_instance_ids(
-        test_target_type=test_target_type,
-        tag_key=tag_key,
-        tag_value=tag_value,
-        instance_ids=targets,
-    )
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
-
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "workers": [
-            workers,
-        ],
-        "filesize": [
-            filesize,
-        ],
-    }
-
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="DiskVolumeExhaustion",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
-
-    return response
-
-
-# Modify experiment to call stress_network_latency and remove this function.
-def elk_stress_network_latency(
-    targets: List[str] = None,
+def ec2_stress_network_latency(
+    targets: list[str] = None,
     test_target_type: str = "RANDOM",
     tag_key: str = None,
     tag_value: str = None,
     region: str = "us-east-1",
-    interface: str = None,
-    ports: str = None,
-    port_type: str = None,
-    delay: str = None,
-    duration: str = None,
+    ec2_stress_network_latency_port_type: str = "sport",
+    ec2_stress_network_latency_port_number: str = "0",
+    ec2_stress_network_latency_network_delay: str = "100",
+    ec2_stress_network_latency_duration: str = "60",
+    ec2_stress_network_latency_interface: str = "eth0",
+    max_duration: str = "900",
+    ec2_stress_network_latency_parameter_map: dict[str, dict] = {},
+    ec2_stress_network_latency_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
 ):
-    function_name = sys._getframe().f_code.co_name
+    function_name = inspect.stack()[0][3]
 
     test_instance_ids = get_test_instance_ids(
         test_target_type=test_target_type,
@@ -437,55 +120,70 @@ def elk_stress_network_latency(
         tag_value=tag_value,
         instance_ids=targets,
     )
-    print(function_name, "(): test_instance_ids= ", test_instance_ids)
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
 
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "ports": [
-            ports,
-        ],
-        "portType": [
-            port_type,
-        ],
-        "delay": [
-            delay,
-        ],
-        "interface": [
-            interface,
-        ],
+    def_ssm_doc_params = {
+        "duration": [ec2_stress_network_latency_duration],
+        "interface": [ec2_stress_network_latency_interface],
+        "portType": [ec2_stress_network_latency_port_type],
+        "portNumber": [ec2_stress_network_latency_port_number],
+        "delay": [ec2_stress_network_latency_network_delay],
     }
 
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="StressNetworkLatency",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_stress_network_latency_parameter_map:
+        ec2_stress_network_latency_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_stress_network_latency_parameter_map[x]["duration"][0])
+        for x in ec2_stress_network_latency_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
-    except ClientError as e:
-        logging.error(e)
-        raise
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
 
-    return response
+    results = run_ssm_doc_multistage(
+        doc_name="StressNetworkLatency",
+        failure_mode=ec2_stress_network_latency_failure_mode,
+        param_map=ec2_stress_network_latency_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
 
 
-# Modify the experiment to call black_hole_by_port and remove this function.
-def black_hole_elk(
-    targets: List[str] = None,
+def ec2_stress_network_utilization(
+    targets: list[str] = None,
     test_target_type: str = "RANDOM",
     tag_key: str = None,
     tag_value: str = None,
     region: str = "us-east-1",
-    elk_sports: str = None,
-    elk_dports: str = None,
-    protocol: str = "tcp udp",
-    duration: str = None,
+    ec2_stress_network_utilization_port_type: str = "sport",
+    ec2_stress_network_utilization_port_number: str = "0",
+    ec2_stress_network_utilization_network_rate: str = "100",
+    ec2_stress_network_utilization_duration: str = "60",
+    ec2_stress_network_utilization_interface: str = "eth0",
+    max_duration: str = "900",
+    ec2_stress_network_utilization_parameter_map: dict[str, dict] = {},
+    ec2_stress_network_utilization_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
 ):
-    function_name = sys._getframe().f_code.co_name
+    function_name = inspect.stack()[0][3]
 
     test_instance_ids = get_test_instance_ids(
         test_target_type=test_target_type,
@@ -493,51 +191,67 @@ def black_hole_elk(
         tag_value=tag_value,
         instance_ids=targets,
     )
-    print(function_name, "(): test_instance_ids= ", test_instance_ids)
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
 
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "protocol": [
-            protocol,
-        ],
-        "elkDports": [
-            elk_dports,
-        ],
-        "elkSports": [
-            elk_sports,
-        ],
+    def_ssm_doc_params = {
+        "duration": [ec2_stress_network_utilization_duration],
+        "interface": [ec2_stress_network_utilization_interface],
+        "portType": [ec2_stress_network_utilization_port_type],
+        "portNumber": [ec2_stress_network_utilization_port_number],
+        "rate": [ec2_stress_network_utilization_network_rate],
     }
 
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="BlackHoleByPort",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_stress_network_utilization_parameter_map:
+        ec2_stress_network_utilization_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_stress_network_utilization_parameter_map[x]["duration"][0])
+        for x in ec2_stress_network_utilization_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
-    except ClientError as e:
-        logging.error(e)
-        raise
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
 
-    return response
+    results = run_ssm_doc_multistage(
+        doc_name="StressNetworkUtilization",
+        failure_mode=ec2_stress_network_utilization_failure_mode,
+        param_map=ec2_stress_network_utilization_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
 
 
-def black_hole_by_port(
-    targets: List[str] = None,
+def ec2_stress_cpu(
+    targets: list[str] = None,
     test_target_type: str = "RANDOM",
     tag_key: str = None,
     tag_value: str = None,
     region: str = "us-east-1",
-    source_ports: str = "",
-    destination_ports: str = "",
-    protocol: str = "tcp udp",
-    duration: str = None,
+    ec2_cpu_duration: str = "60",
+    max_duration: str = "900",
+    ec2_cpu_percent: str = "80",
+    ec2_stress_cpu_parameter_map: dict[str, dict] = {},
+    ec2_stress_cpu_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
 ):
-    function_name = sys._getframe().f_code.co_name
+    function_name = inspect.stack()[0][3]
 
     test_instance_ids = get_test_instance_ids(
         test_target_type=test_target_type,
@@ -545,37 +259,385 @@ def black_hole_by_port(
         tag_value=tag_value,
         instance_ids=targets,
     )
-    print(function_name, "(): test_instance_ids= ", test_instance_ids)
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
 
-    parameters = {
-        "duration": [
-            duration,
-        ],
-        "protocol": [
-            protocol,
-        ],
-        "destinationPorts": [
-            destination_ports,
-        ],
-        "sourcePorts": [
-            source_ports,
-        ],
+    def_ssm_doc_params = {
+        "duration": [ec2_cpu_duration],
+        "cpu": [ec2_cpu_percent],
     }
 
-    session = boto3.Session()
-    ssm = session.client("ssm", region)
-    try:
-        response = ssm.send_command(
-            DocumentName="BlackHoleByPort",
-            InstanceIds=test_instance_ids,
-            CloudWatchOutputConfig={"CloudWatchOutputEnabled": True},
-            Parameters=parameters,
-        )
-    except ClientError as e:
-        logging.error(e)
-        raise
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_stress_cpu_parameter_map:
+        ec2_stress_cpu_parameter_map["default"] = def_ssm_doc_params
 
-    return response
+    sum_duration = [
+        int(ec2_stress_cpu_parameter_map[x]["duration"][0])
+        for x in ec2_stress_cpu_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
+        )
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
+
+    results = run_ssm_doc_multistage(
+        doc_name="StressCPU",
+        failure_mode=ec2_stress_cpu_failure_mode,
+        param_map=ec2_stress_cpu_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
+
+
+def ec2_stress_memory(
+    targets: list[str] = None,
+    test_target_type: str = "RANDOM",
+    tag_key: str = None,
+    tag_value: str = None,
+    region: str = "us-east-1",
+    ec2_stress_memory_duration: str = "60",
+    max_duration: str = "900",
+    ec2_stress_memory_percent_per_worker: str = "50",
+    ec2_stress_memory_number_of_workers: str = "1",
+    ec2_stress_memory_parameter_map: dict[str, dict] = {},
+    ec2_stress_memory_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+):
+    function_name = inspect.stack()[0][3]
+
+    test_instance_ids = get_test_instance_ids(
+        test_target_type=test_target_type,
+        tag_key=tag_key,
+        tag_value=tag_value,
+        instance_ids=targets,
+    )
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
+
+    def_ssm_doc_params = {
+        "duration": [ec2_stress_memory_duration],
+        "numberOfWorkers": [ec2_stress_memory_number_of_workers],
+        "memoryPercentagePerWorker": [ec2_stress_memory_percent_per_worker],
+    }
+
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_stress_memory_parameter_map:
+        ec2_stress_memory_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_stress_memory_parameter_map[x]["duration"][0])
+        for x in ec2_stress_memory_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
+        )
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
+
+    results = run_ssm_doc_multistage(
+        doc_name="StressMemory",
+        failure_mode=ec2_stress_memory_failure_mode,
+        param_map=ec2_stress_memory_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
+
+
+def ec2_stress_cpu(
+    targets: list[str] = None,
+    test_target_type: str = "RANDOM",
+    tag_key: str = None,
+    tag_value: str = None,
+    region: str = "us-east-1",
+    ec2_stress_cpu_duration: str = "60",
+    max_duration: str = "900",
+    stress_cpu_percent: str = "50",
+    ec2_stress_cpu_parameter_map: dict[str, dict] = {},
+    ec2_stress_cpu_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+):
+    function_name = inspect.stack()[0][3]
+
+    test_instance_ids = get_test_instance_ids(
+        test_target_type=test_target_type,
+        tag_key=tag_key,
+        tag_value=tag_value,
+        instance_ids=targets,
+    )
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
+
+    def_ssm_doc_params = {
+        "cpu": [stress_cpu_percent],
+        "duration": [ec2_stress_cpu_duration],
+    }
+
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_stress_cpu_parameter_map:
+        ec2_stress_cpu_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_stress_cpu_parameter_map[x]["duration"][0])
+        for x in ec2_stress_cpu_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
+        )
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
+
+    results = run_ssm_doc_multistage(
+        doc_name="StressCPU",
+        failure_mode=ec2_stress_cpu_parameter_map,
+        param_map=ec2_stress_cpu_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
+
+
+def ec2_exhaust_root_vol(
+    targets: list[str] = None,
+    test_target_type: str = "RANDOM",
+    tag_key: str = None,
+    tag_value: str = None,
+    region: str = "us-east-1",
+    ec2_exhaust_root_vol_duration: str = "60",
+    max_duration: str = "900",
+    ec2_exhaust_root_vol_parameter_map: dict[str, dict] = {},
+    ec2_exhaust_root_vol_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+):
+    function_name = inspect.stack()[0][3]
+
+    test_instance_ids = get_test_instance_ids(
+        test_target_type=test_target_type,
+        tag_key=tag_key,
+        tag_value=tag_value,
+        instance_ids=targets,
+    )
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
+
+    def_ssm_doc_params = {
+        "duration": [ec2_exhaust_root_vol_duration],
+    }
+
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_exhaust_root_vol_parameter_map:
+        ec2_exhaust_root_vol_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_exhaust_root_vol_parameter_map[x]["duration"][0])
+        for x in ec2_exhaust_root_vol_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
+        )
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
+
+    results = run_ssm_doc_multistage(
+        doc_name="DiskVolumeExhaustion",
+        failure_mode=ec2_exhaust_root_vol_failure_mode,
+        param_map=ec2_exhaust_root_vol_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
+
+
+def ec2_blackhole_by_port(
+    targets: list[str] = None,
+    test_target_type: str = "RANDOM",
+    tag_key: str = None,
+    tag_value: str = None,
+    region: str = "us-east-1",
+    ec2_blackhole_by_port_protocol: str = "tcp udp",
+    ec2_blackhole_by_port_source_ports: str = "",
+    ec2_blackhole_by_port_destination_ports: str = "",
+    ec2_blackhole_by_port_direction: str = "BOTH",
+    ec2_blackhole_by_port_duration: str = "60",
+    max_duration: str = "900",
+    ec2_blackhole_by_port_parameter_map: dict[str, dict] = {},
+    ec2_blackhole_by_port_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+):
+    function_name = inspect.stack()[0][3]
+
+    test_instance_ids = get_test_instance_ids(
+        test_target_type=test_target_type,
+        tag_key=tag_key,
+        tag_value=tag_value,
+        instance_ids=targets,
+    )
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
+
+    def_ssm_doc_params = {
+        "duration": [ec2_blackhole_by_port_duration],
+        "protocol": [ec2_blackhole_by_port_protocol],
+        "sourcePorts": [ec2_blackhole_by_port_source_ports],
+        "destinationPorts": [ec2_blackhole_by_port_destination_ports],
+        "direction": [ec2_blackhole_by_port_direction],
+    }
+
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_blackhole_by_port_parameter_map:
+        ec2_blackhole_by_port_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_blackhole_by_port_parameter_map[x]["duration"][0])
+        for x in ec2_blackhole_by_port_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
+        )
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
+
+    results = run_ssm_doc_multistage(
+        doc_name="BlackholeByPort",
+        failure_mode=ec2_blackhole_by_port_failure_mode,
+        param_map=ec2_blackhole_by_port_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
+
+
+def ec2_blackhole_by_ip(
+    ec2_blackhole_ip: str,
+    targets: list[str] = None,
+    test_target_type: str = "RANDOM",
+    tag_key: str = None,
+    tag_value: str = None,
+    region: str = "us-east-1",
+    ec2_blackhole_by_ip_port_protocol: str = "tcp udp",
+    ec2_blackhole_by_ip_direction: str = "BOTH",
+    ec2_blackhole_by_ip_duration: str = "60",
+    max_duration: str = "900",
+    ec2_blackhole_by_ip_parameter_map: dict[str, dict] = {},
+    ec2_blackhole_by_ip_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+):
+    function_name = inspect.stack()[0][3]
+
+    test_instance_ids = get_test_instance_ids(
+        test_target_type=test_target_type,
+        tag_key=tag_key,
+        tag_value=tag_value,
+        instance_ids=targets,
+    )
+    logger.info(f"{function_name}(): test_instance_ids={test_instance_ids}")
+
+    def_ssm_doc_params = {
+        "duration": [ec2_blackhole_by_ip_duration],
+        "protocol": [ec2_blackhole_by_ip_port_protocol],
+        "sourceIP": [ec2_blackhole_ip],
+        "destinationIP": [ec2_blackhole_ip],
+        "direction": [ec2_blackhole_by_ip_direction],
+    }
+
+    def_instance_params = {
+        "test_target_type": test_target_type,
+        "tag_key": tag_key,
+        "tag_value": tag_value,
+        "instance_ids": test_instance_ids,
+        "region": region,
+    }
+    if not ec2_blackhole_by_ip_parameter_map:
+        ec2_blackhole_by_ip_parameter_map["default"] = def_ssm_doc_params
+
+    sum_duration = [
+        int(ec2_blackhole_by_ip_parameter_map[x]["duration"][0])
+        for x in ec2_blackhole_by_ip_parameter_map
+    ]
+    if sum_duration > int(max_duration):
+        logger.error(
+            f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
+        )
+        raise ActivityFailed(
+            f"Combined duration over max: {sum_duration} > {max_duration}"
+        )
+
+    results = run_ssm_doc_multistage(
+        doc_name="BlackholeByIP",
+        failure_mode=ec2_blackhole_by_ip_failure_mode,
+        param_map=ec2_blackhole_by_ip_parameter_map,
+        def_instance_params=def_instance_params,
+        def_doc_params=def_ssm_doc_params,
+        region=region,
+    )
+    if len([x[2] for x in results if x[1] != "success"]) > 0:
+        logger.error(
+            f"{function_name}(): Failed SSM runs with output: {json.dumps(results)}"
+        )
+        raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
+    return results
 
 
 def remove_iam_role(
@@ -586,11 +648,11 @@ def remove_iam_role(
     sleep_length: int = 10,
 ):
     command_execution_intance = get_test_instance_ids(
-        test_target_type="RANDOM", tag_key="tag:Name", tag_value=tag_value
+        test_target_type="RANDOM", tag_key="tag:Name", tag_value=instance_tag_value
     )
 
     instance_profile_name = get_instance_profile_name(
-        tagKey="tag:Name", tagValue=tag_value
+        tagKey="tag:Name", tagValue=profile_tag_value
     )
     role_name = get_role_from_instance_profile(instance_profile_name)
 
@@ -605,12 +667,12 @@ def remove_iam_role(
         response = b3.remove_role_from_instance_profile(
             InstanceProfileName=instance_profile_name, RoleName=role_name
         )
-        sleep(sleep_length)
+        time.sleep(sleep_length)
         resp = b3.add_role_to_instance_profile(
             InstanceProfileName=instance_profile_name, RoleName=role_name
         )
     except ClientError as e:
-        logging.error(e)
+        logger.error(e)
         raise
 
     return True
@@ -623,11 +685,20 @@ def terminate_instance(
     tag_value: str = None,
     region: str = "us-east-1",
 ):
-    function_name = sys._getframe().f_code.co_name
+    function_name = inspect.stack()[0][3]
     test_instance_ids = get_test_instance_ids(
         test_target_type=test_target_type,
         tag_key=tag_key,
         tag_value=tag_value,
         instance_ids=targets,
     )
-    logging.info(function_name, "(): test_instance_ids= ", test_instance_ids)
+    logger.info(function_name, "(): test_instance_ids= ", test_instance_ids)
+
+    session = boto3.Session()
+    ec2client = session.client("ec2", region)
+
+    try:
+        response = ec2client.terminate_instances(InstanceIds=test_instance_ids)
+    except ClientError as e:
+        logger.error(e)
+        raise

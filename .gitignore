@@ -16,3 +16,5 @@ terraform.rc
 .tmp
 *.egg-info
 /.idea/
+
+.DS_Store
