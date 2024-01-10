@@ -73,9 +73,9 @@ class ExperimentFoundationLambdaStack(core.Stack):
                         "arn:aws:s3:::experiment-experiment-bucket"
                         + random_bucket_suffix
                         + "/*",
-                        "arn:aws:s3:::resiliencyvr-package-build-bucket"
+                        "arn:aws:s3:::resiliencyvr-package-build-bucket-demo"
                         + random_bucket_suffix,
-                        "arn:aws:s3:::resiliencyvr-package-build-bucket"
+                        "arn:aws:s3:::resiliencyvr-package-build-bucket-demo"
                         + random_bucket_suffix
                         + "/*",
                     ],

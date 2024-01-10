@@ -78,7 +78,7 @@ resource "aws_iam_role" "resiliencyvr_codebuild_package_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "resiliencyvr_codebuild_package_policy" {
+resource "aws_iam_role_policy" "resiliencyvr_codebuild_package_policy_demo" {
   role = aws_iam_role.resiliencyvr_codebuild_package_role.name
 
   policy = <<POLICY
@@ -153,7 +153,7 @@ resource "aws_iam_role" "resiliencyvr_codebuild_lambda_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "resiliencyvr_codebuild_lambda_policy" {
+resource "aws_iam_role_policy" "resiliencyvr_codebuild_lambda_policy_demo" {
   role = aws_iam_role.resiliencyvr_codebuild_lambda_role.name
 
   policy = <<POLICY

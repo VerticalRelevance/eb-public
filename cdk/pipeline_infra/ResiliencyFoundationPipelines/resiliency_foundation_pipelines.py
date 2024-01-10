@@ -51,7 +51,7 @@ class ResiliencyFoundationPipelinesStack(Stack):
         )
 
         encryption_key = kms.Key(
-            self, "res-ca-dev-repo-key", description="res-ca-dev repository key"
+            self, "res-ca-dev-repo-key-demo", description="res-ca-dev repository key"
         )
 
         cfn_domain_res_ca_devckd = codeartifact.CfnDomain(
@@ -91,7 +91,7 @@ class ResiliencyFoundationPipelinesStack(Stack):
         code_pipeline_bucket = s3.Bucket(
             self,
             "code_pipeline_bucket",
-            bucket_name="resiliencyvr-package-build-bucket" + random_bucket_suffix,
+            bucket_name="resiliencyvr-package-build-bucket-demo" + random_bucket_suffix,
             access_control=s3.BucketAccessControl.PRIVATE,
             removal_policy=core.RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -132,7 +132,7 @@ class ResiliencyFoundationPipelinesStack(Stack):
                         "codebuild:StartBuild",
                     ],
                     resources=[
-                        f"arn:aws:codebuild:{core.Stack.of(self).region}:{core.Stack.of(self).account}:project/resiliencyvr-package-codebuild"
+                        f"arn:aws:codebuild:{core.Stack.of(self).region}:{core.Stack.of(self).account}:project/resiliencyvr-package-codebuild-demo"
                     ],
                 ),
             ],
@@ -146,10 +146,10 @@ class ResiliencyFoundationPipelinesStack(Stack):
         codeartifact_domain_res_ca_dev_domain_arn,
         codepipeline_bucket,
     ):
-        resiliencyvr_codebuild_package_policy = iam.ManagedPolicy(
+        resiliencyvr_codebuild_package_policy_demo = iam.ManagedPolicy(
             self,
-            "resiliencyvr_codebuild_package_policy",
-            managed_policy_name="resiliencyvr_codebuild_package_policy",
+            "resiliencyvr_codebuild_package_policy_demo",
+            managed_policy_name="resiliencyvr_codebuild_package_policy_demo",
             statements=[
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
@@ -194,7 +194,7 @@ class ResiliencyFoundationPipelinesStack(Stack):
             ],
         )
 
-        return resiliencyvr_codebuild_package_policy
+        return resiliencyvr_codebuild_package_policy_demo
 
     def createCodeBuildLambdaIAMPolicy(
         self,
@@ -202,10 +202,10 @@ class ResiliencyFoundationPipelinesStack(Stack):
         codeartifact_domain_res_ca_dev_domain_arn,
         codepipeline_bucket,
     ):
-        resiliencyvr_codebuild_lambda_policy = iam.ManagedPolicy(
+        resiliencyvr_codebuild_lambda_policy_demo = iam.ManagedPolicy(
             self,
-            "resiliencyvr_codebuild_lambda_policy",
-            managed_policy_name="resiliencyvr_codebuild_lambda_policy",
+            "resiliencyvr_codebuild_lambda_policy_demo",
+            managed_policy_name="resiliencyvr_codebuild_lambda_policy_demo",
             statements=[
                 iam.PolicyStatement(
                     effect=iam.Effect.ALLOW,
@@ -289,7 +289,7 @@ class ResiliencyFoundationPipelinesStack(Stack):
             ],
         )
 
-        return resiliencyvr_codebuild_lambda_policy
+        return resiliencyvr_codebuild_lambda_policy_demo
 
     def createIAMRole(self, name, service_principal_list):
         composite_principal = iam.CompositePrincipal(
@@ -317,8 +317,8 @@ class ResiliencyFoundationPipelinesStack(Stack):
     ):
         resiliencyvr_project = codebuild.PipelineProject(
             self,
-            "resiliencyvr_codebuild_project",
-            project_name="resiliencyvr-package-codebuild",
+            "resiliencyvr_codebuild_project_demo",
+            project_name="resiliencyvr-package-codebuild-demo",
             description="Builds the resiliencyvr package",
             role=codebuild_package_role,
             timeout=core.Duration.minutes(5),
@@ -357,7 +357,7 @@ class ResiliencyFoundationPipelinesStack(Stack):
     ):
         lambda_deploy_project = codebuild.PipelineProject(
             self,
-            "cdk_deploy",
+            "cdk_deploy_demo",
             role=codebuild_lambda_role,
             build_spec=codebuild.BuildSpec.from_object(
                 {
@@ -396,7 +396,9 @@ class ResiliencyFoundationPipelinesStack(Stack):
         return lambda_deploy_project
 
     def createResiliencyVRPipeline(self, resiliencyvr_codebuild_pipeline_project):
-        resiliencyvr_pipeline = codepipeline.Pipeline(self, "resiliencyvr_pipeline")
+        resiliencyvr_pipeline = codepipeline.Pipeline(
+            self, "resiliencyvr_pipeline_demo"
+        )
 
         source_output = codepipeline.Artifact(artifact_name="source_output")
         source_action = codepipeline_actions.GitHubSourceAction(
@@ -460,9 +462,10 @@ class ResiliencyFoundationPipelinesStack(Stack):
         owner = self.account
         repo_name = "res-ca-dev"
         user_name = "mhiggins-vr"
-        github_token = SecretValue.secrets_manager(
-            "github/personal/mhiggins", json_field="my-github-token"
-        )
+        github_token = None
+        # github_token = SecretValue.secrets_manager(
+        #     "github/personal/mhiggins", json_field="my-github-token"
+        # )
 
         # if os.name == "posix":
         #     random_bucket_suffix = pwd.getpwuid(os.geteuid()).pw_name
@@ -473,17 +476,17 @@ class ResiliencyFoundationPipelinesStack(Stack):
 
         codepipeline_role = ResiliencyFoundationPipelinesStack.createIAMRole(
             self,
-            "resiliencyvr-package-build-pipeline-role",
+            "resiliencyvr-package-build-pipeline-role-demo",
             ["codepipeline.amazonaws.com", "codebuild.amazonaws.com"],
         )
         codebuild_package_role = ResiliencyFoundationPipelinesStack.createIAMRole(
             self,
-            "resiliencyvr_codebuild_package_role",
+            "resiliencyvr_codebuild_package_role-demo",
             ["codebuild.amazonaws.com"],
         )
         codebuild_lambda_role = ResiliencyFoundationPipelinesStack.createIAMRole(
             self,
-            "resiliencyvr_codebuild_lambda_role",
+            "resiliencyvr_codebuild_lambda_role-demo",
             ["codebuild.amazonaws.com"],
         )
 

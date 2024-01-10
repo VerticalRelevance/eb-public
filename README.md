@@ -79,7 +79,7 @@ IAM Statement Changes
 │   │ ${MyCfnDomain.Arn}/*                          │        │ codeartifact:GetRepositoryEndpoint            │                                               │                                                 │
 │   │ ${cfn_repository_res_ca_dev.Arn}              │        │                                               │                                               │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-│ + │ ${cdk_deploy.Arn}                             │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${lambda_pipeline/Deploy/Deploy/CodePipel │                                                 │
+│ + │ ${cdk_deploy_demo.Arn}                             │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${lambda_pipeline/Deploy/Deploy/CodePipel │                                                 │
 │   │                                               │        │ codebuild:StartBuild                          │ ineActionRole}                                │                                                 │
 │   │                                               │        │ codebuild:StopBuild                           │                                               │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
@@ -147,14 +147,14 @@ IAM Statement Changes
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
 │ + │ ${lambda_pipeline/Role.Arn}                   │ Allow  │ sts:AssumeRole                                │ Service:codepipeline.amazonaws.com            │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-│ + │ ${res-ca-dev-repo-key.Arn}                    │ Allow  │ kms:*                                         │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
+│ + │ ${res-ca-dev-repo-key-demo.Arn}                    │ Allow  │ kms:*                                         │ AWS:arn:${AWS::Partition}:iam::${AWS::Account │                                                 │
 │   │                                               │        │                                               │ Id}:root                                      │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
 │ + │ ${resiliencyvr_codebuild_lambda_role.Arn}     │ Allow  │ sts:AssumeRole                                │ Service:codebuild.amazonaws.com               │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
 │ + │ ${resiliencyvr_codebuild_package_role.Arn}    │ Allow  │ sts:AssumeRole                                │ Service:codebuild.amazonaws.com               │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-│ + │ ${resiliencyvr_codebuild_project.Arn}         │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${resiliencyvr_pipeline/Build/Build/CodeP │                                                 │
+│ + │ ${resiliencyvr_codebuild_project_demo.Arn}         │ Allow  │ codebuild:BatchGetBuilds                      │ AWS:${resiliencyvr_pipeline/Build/Build/CodeP │                                                 │
 │   │                                               │        │ codebuild:StartBuild                          │ ipelineActionRole}                            │                                                 │
 │   │                                               │        │ codebuild:StopBuild                           │                                               │                                                 │
 ├───┼───────────────────────────────────────────────┼────────┼───────────────────────────────────────────────┼───────────────────────────────────────────────┼─────────────────────────────────────────────────┤

@@ -15,7 +15,7 @@ resource "random_uuid" "lambda_src_hash" {
 
 resource "null_resource" "install_dependencies" {
   provisioner "local-exec" {
-    command = "pip install --upgrade -r ${local.lambda_src_path}/requirements.txt -t ${local.lambda_src_path}"
+    command = "python --version && pip install --upgrade -r ${local.lambda_src_path}/requirements.txt -t ${local.lambda_src_path}"
   }
 
   triggers = {
@@ -24,13 +24,13 @@ resource "null_resource" "install_dependencies" {
 }
 
 resource "aws_iam_role" "experiment_lambda_role" {
-  name               = "experiment_lambda_role"
+  name               = "${var.lambda_name}_role"
   assume_role_policy = data.aws_iam_policy_document.lambda_trust_policy.json
 }
 
 resource "aws_iam_policy" "experiment_lambda_policy" {
   name   = "experiment_lambda_policy"
-  policy = file("lambda_policy.json")
+  policy = templatefile("lambda_policy.json", {experiment_bucket_arn = aws_s3_bucket.experiments_bucket.arn})
 }
 
 resource "aws_iam_role_policy_attachment" "test-attach" {
@@ -44,7 +44,7 @@ resource "aws_iam_role_policy_attachment" "AWSLambdaBasicExecutionRole-attach" {
 }
 
 resource "aws_lambda_function" "experiment_lambda" {
-  function_name = "experiment_lambda-${var.owner}"
+  function_name = "${var.lambda_name}-${var.environment_id}"
   description   = "experiment Testing Lambda for ${var.owner}"
   role          = aws_iam_role.experiment_lambda_role.arn
   runtime       = "python3.9"
@@ -66,4 +66,12 @@ resource "aws_lambda_function" "experiment_lambda" {
   }
 
   depends_on = [aws_s3_object.lambda_file]
+}
+
+resource "aws_s3_object" "lambda_file" {
+  bucket     = var.experiment_bucket
+  key        = "experiment_code_lambda-${var.owner}-${var.environment_id}.zip"
+  source     = data.archive_file.lambda_source_package.output_path
+  depends_on = [data.archive_file.lambda_source_package]
+  kms_key_id = aws_kms_key.s3_key.arn
 }

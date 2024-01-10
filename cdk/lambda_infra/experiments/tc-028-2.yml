@@ -8,7 +8,7 @@ configuration:
   test_instance_tag_key: 'tag:eks:cluster-name'
   test_instance_tag_value: 'blueprint'
   name_space: 'public'
-  output_bucket: 'resiliencyvr-package-build-bucketalpha'
+  output_bucket: 'resiliencyvr-package-build-bucket-demoalpha'
   aws_region: 'us-east-1'
 method:
   - type: action

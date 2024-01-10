@@ -44,7 +44,7 @@ variable "experiments_bucket_name" {
 variable "experiment_package_bucket" {
   description = "Bucket to place the lambda package in"
   type        = string
-  default     = "resiliencyvr-package-build-bucket"
+  default     = "resiliencyvr-package-build-bucket-demo"
 }
 
 variable "backend_bucket_name" {

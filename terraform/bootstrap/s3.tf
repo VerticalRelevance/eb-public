@@ -1,10 +1,7 @@
 resource "aws_s3_bucket" "backend_bucket" {
-  bucket = "experiment-pipeline-backend-bucket-alpha"
+  bucket = "experiment-pipeline-backend-bucket-${var.environment_id}"
 }
-#resource "aws_s3_bucket_acl" "backend_bucket_acl" {
-#  bucket = aws_s3_bucket.backend_bucket.id
-#  acl    = "private"
-#}
+
 resource "aws_s3_bucket_public_access_block" "backend_bucket" {
   bucket = aws_s3_bucket.backend_bucket.id
   block_public_acls       = true

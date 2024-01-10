@@ -13,7 +13,7 @@ configuration:
   test_instance_tag_key: 'tag:aws:eks:cluster-name'
   test_instance_tag_value: 'blueprint'
   pod_name_pattern: 'spring-frontend'
-  output_bucket_name: 'resiliencyvr-package-build-bucketalpha'
+  output_bucket_name: 'resiliencyvr-package-build-bucket-demoalpha'
 steady-state-hypothesis:
   title: Infrastructure is healthy
   probes:
@@ -47,6 +47,6 @@ method:
         pod_name_pattern: ${pod_name_pattern}
         tag_key: ${test_instance_tag_key}
         tag_value: ${test_instance_tag_value}
-        output_s3_bucket_name: 'resiliencyvr-package-build-bucketalpha'
+        output_s3_bucket_name: 'resiliencyvr-package-build-bucket-demoalpha'
     pauses:
         after: 10

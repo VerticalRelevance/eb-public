@@ -41,5 +41,5 @@ resource "aws_sfn_state_machine" "state_machine" {
   name     = "Experiment_broker"
   role_arn = aws_iam_role.step_function_role.arn
 
-  definition = file("${path.module}/state_machine.json")
+  definition = templatefile("${path.module}/state_machine.json", {lambda_arn = aws_lambda_function.experiment_lambda.arn})
 }

@@ -18,8 +18,8 @@
         ],
         "Effect": "Allow",
         "Resource": [ 
-          "arn:aws:s3:::resiliency-testing-experiments-alpha",
-          "arn:aws:s3:::resiliency-testing-experiments-alpha/*"
+          "${experiment_bucket_arn}",
+          "${experiment_bucket_arn}/*"
         ]
       },
       {

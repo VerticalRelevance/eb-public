@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "codepipeline_bucket" {
-  bucket = "resiliencyvr-package-build-bucket"
+  bucket = "resiliencyvr-package-build-bucket-demo"
 }
 
 #resource "aws_s3_bucket_acl" "codepipeline_bucket_acl" {

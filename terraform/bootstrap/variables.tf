@@ -22,12 +22,6 @@ variable "owner" {
   default     = "Resiliency_Team"
 }
 
-variable "experiment_bucket" {
-  description = "Bucket to place the lambda package in"
-  type        = string
-  default     = "resiliencyvr-package-build-bucket"
-}
-
 variable "environment_id" {
   type        = string
   default     = "demo"
