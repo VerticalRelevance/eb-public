@@ -1,7 +1,7 @@
 variable "lambda_relative_path" {
   description = "Used in the Lambda build"
   type        = string
-  default     = "/../../Experiment-Broker-Module/experiment_code/"
+  default     = "./../../Experiment-Broker-Module/experiment_code/"
 }
 
 variable "lambda_log_level" {

@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from typing import List
 from botocore.exceptions import ClientError
 from experimentvr.ec2.shared import get_test_instance_ids
-from chaosk8s import terminate_pods
+from chaosk8s.pod.actions import terminate_pods
 
 from kubernetes import client, config
 from experimentvr.k8s.shared import (
@@ -80,7 +80,6 @@ def kill_pods(
             f"{function_name}(): calling get_eks_api_client(cluster_name={cluster_name}, region={region})"
         )
         api_client = get_eks_api_client(cluster_name=cluster_name, region=region)
-        logger.info()
         os.environ["KUBERNETES_HOST"] = api_client.configuration.host
         os.environ["KUBERNETES_API_KEY"] = api_client.configuration.api_key[
             "authorization"
@@ -1036,3 +1035,12 @@ def pod_blackhole_by_name(
         )
         raise ActivityFailed(f"Failed SSM runs with output: {json.dumps(results)}")
     return results
+
+
+if __name__ == "__main__":
+    kill_pods(
+        cluster_name="experiment-eks",
+        name_space="experiment-demo",
+        pod_name_pattern="experiment-demo",
+        num_pods_to_kill="1",
+    )

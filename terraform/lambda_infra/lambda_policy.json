@@ -53,6 +53,14 @@
             "ec2:ResourceTag/Type": "Resiliency"
           }
         }
-      }
+      },
+      {
+        "Sid": "EKSPermissions",
+        "Action": [
+          "eks:*"
+        ],
+        "Effect": "Allow",
+        "Resource": "*"
+       }
     ]
 }

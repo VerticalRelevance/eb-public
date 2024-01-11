@@ -249,3 +249,11 @@ def pod_healthy(
     #                                     Delete = {'Objects': objects_to_delete})
 
     return pods_healthy
+
+
+if __name__ == "__main__":
+    assert_pod_healthy(
+        cluster_name="experiment-eks",
+        namespace="experiment-demo",
+        pod_name="experiment-demo",
+    )
