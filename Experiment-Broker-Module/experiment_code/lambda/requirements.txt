@@ -1,0 +1,4 @@
+boto3==1.34.15
+chaostoolkit==1.16.0
+chaostoolkit-aws==0.29.0
+chaostoolkit-kubernetes==0.34.1
