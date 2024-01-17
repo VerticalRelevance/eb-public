@@ -20,3 +20,4 @@ terraform.rc
 Experiment-Broker-Module/experiment_code/build
 terraform/lambda_infra/build_temp
 .DS_Store
+.vscode/
