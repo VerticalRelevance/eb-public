@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 
 
 class ParameterMapFailuremode(Enum):
@@ -6,3 +6,8 @@ class ParameterMapFailuremode(Enum):
 
     FailFast = True
     Continue = False
+
+
+if __name__ == "__main__":
+    test = ParameterMapFailuremode(True)
+    print(test)

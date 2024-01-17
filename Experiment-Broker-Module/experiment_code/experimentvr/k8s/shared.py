@@ -135,7 +135,3 @@ def install_stress_ng_on_pod(node_key: str, node_values: List[str]):
         return False
 
     return True
-
-
-if __name__ == "__main__":
-    get_bearer_token(cluster_name="experiment-eks", region="us-east-1")
