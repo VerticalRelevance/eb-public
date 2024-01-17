@@ -4,7 +4,8 @@
       {
         "Sid": "SSMPermissions",
         "Action": [
-          "ssm:SendCommand"
+          "ssm:SendCommand",
+          "ssm:ListCommandInvocations"
         ],
         "Effect": "Allow",
         "Resource": "*"
