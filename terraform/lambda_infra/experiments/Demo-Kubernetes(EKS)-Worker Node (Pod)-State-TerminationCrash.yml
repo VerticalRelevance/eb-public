@@ -2,6 +2,10 @@ version: 1.0.0
 title: Demo-Kubernetes(EKS)-Worker Node (Pod)-State-Termination/Crash
 description: This experiment will Terminate an eks pod to simulate a crash or accidental termination
 configuration:
+  target: "experiment-demo.experimentvr.verticalrelevancelabs.com"
+  intensity: 1000
+  alarm_name: "Experiment-Demo PacketLoss"
+  alarm_state: "ALARM"
   aws_region: 'us-east-1'
   cluster_name: "experiment-eks"
   name_space: "experiment-demo"
@@ -24,6 +28,16 @@ steady-state-hypothesis:
             pod_name: ${pod_name_pattern}
 method:
   - type: action
+    name: Introduce load to experiment-demo
+    background: true
+    provider:
+      type: python
+      module: experimentvr.load.actions
+      func: load_generate_demo
+      arguments:
+        target: ${target}
+        intensity: ${intensity}
+  - type: action
     name: Terminate an Pod within EKS
     provider:
       type: python
@@ -34,3 +48,12 @@ method:
         name_space: ${name_space}
         pod_name_pattern: ${pod_name_pattern}
         num_pods_to_kill: ${num_pods_to_kill}
+  - type: probe
+    name: Check Alarm State
+    provider:
+      type: python
+      module: experimentvr.cloudwatch.probes
+      func: probe_alarm_state
+      arguments:
+        alarm_name: ${alarm_name}
+        alarm_state: ${alarm_state}

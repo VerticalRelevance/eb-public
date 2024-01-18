@@ -2,6 +2,8 @@ version: 1.0.0
 title: Demo-Kubernetes(EKS)-Worker Node (EC2)-Network-PacketLossLatency
 description: This experiment will Terminate an eks pod to simulate a crash or accidental termination
 configuration:
+  target: "experiment-demo.experimentvr.verticalrelevancelabs.com"
+  intensity: 1000
   aws_region: 'us-east-1'
   cluster_name: "experiment-eks"
   name_space: "experiment-demo"
@@ -29,6 +31,15 @@ steady-state-hypothesis:
             namespace: ${name_space}
             pod_name: ${pod_name_pattern}
 method:
+  - type: action
+    name: Introduce load to experiment-demo
+    provider:
+      type: python
+      module: experimentvr.load.actions
+      func: load_generate_demo
+      arguments:
+        target: ${target}
+        intensity: ${intensity}
   - type: action
     name: Introduce Latency to a node
     provider:

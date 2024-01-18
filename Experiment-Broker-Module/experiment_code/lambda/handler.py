@@ -72,7 +72,7 @@ def handler(event, context):
             upload_experiment_journal(
                 journal=experiment_journal, output_config=output_config["OPENSEARCH"]
             )
-
+            logger.info(f"Experiment journal uploaded to Opensearch")
         except Exception:
             exc_str = traceback.format_exc()
             logger.error(
@@ -81,12 +81,15 @@ def handler(event, context):
 
     if "S3" in output_config.keys():
         try:
+            key = output_config["S3"]["path"] + str(
+                datetime.now().replace(second=0, microsecond=0)
+            ).replace(" ", "-")
             output_s3 = put_object(
                 bucket_name=output_config["S3"]["bucket_name"],
-                key=output_config["S3"]["path"],
+                key=key,
                 contents=json.dumps(experiment_journal),
             )
-            logger.info(f"Experiment journal uploaded to S3")
+            logger.info(f"Experiment journal uploaded to S3 as: {key} ")
         except Exception:
             exc_str = traceback.format_exc()
             logger.error(f"Unable to upload experiment journal to S3: {exc_str}")
