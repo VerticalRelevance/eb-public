@@ -10,13 +10,13 @@ from typing import Any, Dict, List
 logging.basicConfig(level=logging.ERROR)
 
 
-def get_random_instance_id_by_tag(tagKey, tagValue):
+def get_random_instance_id_by_tag(tagKey, tagValue, region="us-east-1"):
     """Returns an instance id from a given tagname"""
 
     function_name = inspect.stack()[0][3]
 
     session = boto3.Session()
-    ec2 = session.client("ec2", "us-east-1")
+    ec2 = session.client("ec2", region)
 
     filters = [
         {
@@ -43,13 +43,13 @@ def get_random_instance_id_by_tag(tagKey, tagValue):
     return instance_id
 
 
-def get_all_instance_ids_by_tag(tagKey, tagValue):
+def get_all_instance_ids_by_tag(tagKey, tagValue, region="us-east-1"):
     """Returns a list of instance ida from a given tagname"""
 
     function_name = inspect.stack()[0][3]
 
     session = boto3.Session()
-    ec2 = session.client("ec2", "us-east-1")
+    ec2 = session.client("ec2", region)
 
     instance_list = ec2.describe_instances(
         Filters=[
@@ -79,6 +79,7 @@ def get_test_instance_ids(
     tag_key: str = "tag:Name",
     tag_value: str = "nodes.experimentvr-us-east-1.k8s.local",
     instance_ids: List[str] = None,
+    region="us-east-1",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -106,13 +107,13 @@ def get_test_instance_ids(
     return test_instance_ids
 
 
-def get_instance_profile_name(tagKey, tagValue):
+def get_instance_profile_name(tagKey, tagValue, region="us-east-1"):
     """Returns a str of instance IAM profile instances 'name' from a given tagname"""
 
     function_name = inspect.stack()[0][3]
 
     session = boto3.Session()
-    ec2 = session.client("ec2", "us-east-1")
+    ec2 = session.client("ec2", region)
 
     instance_list = ec2.describe_instances(
         Filters=[

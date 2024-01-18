@@ -14,7 +14,6 @@ parameters:
     type: String
     description: "The interface to add delay to (default: eth0)."
     default: "eth0"
-    allowedPattern: '^[0-9a-zA-Z\-]{1,15}$'
   ports:
     type: String
     description: The port numbers separated by a space on which to induce the network latency.
@@ -26,26 +25,18 @@ parameters:
       The port type on which to induce the network latency. (default:sport).
       The allowed values are: dport, sport.
     default: "sport"
-    allowedValues:
-      - dport
-      - sport
   delay:
     type: String
     description: "The delay - in milliseconds - to add to the interface (default: 100)."
     default: "100"
-    allowedPattern: "^[0-9]+$"
   duration:
     type: String
     description: "The duration - in seconds - of the test (default: 60)."
     default: "60"
-    allowedPattern: "^[0-9]+$"
   installDependencies:
     type: String
     description: "If set to True, Systems Manager installs the required dependencies on the target instances. (default: True)."
     default: 'True'
-    allowedValues:
-      - 'True'
-      - 'False'
 mainSteps:
   - action: aws:runShellScript
     precondition:
@@ -97,14 +88,20 @@ mainSteps:
         - |
           sudo -s -H <<'EOF'
 
+          echo "interface" = {{ interface }}
+          echo "delay" = {{ delay }}
+          echo "portType" = {{ portType }}
+          echo "ports" = {{ ports }}
+          echo "duration" = {{ duration }}
+
           echo "Injecting latency..."
           if  [[ "{{ ports }}" == 0 ]] ; then
-            tc qdisc add dev {{ interface }} root netem delay {{ delay }}ms
+            sudo tc qdisc add dev {{ interface }} root netem delay {{ delay }}ms
             echo "Before sleep..."
             sleep {{ duration }}s
             echo "After sleep..."
             echo "Before removing network latency..."
-            tc qdisc del dev {{ interface }} root
+            sudo tc qdisc del dev {{ interface }} root
             echo "After removing network latency..."
           else
             for port in {{ ports }}; do
@@ -112,6 +109,7 @@ mainSteps:
               tc qdisc add dev {{ interface }} parent 1:2 handle 20: netem delay '{{ delay }}ms'
               tc filter add dev {{ interface }} parent 1:0 protocol ip u32 match ip '{{portType}}' $port 0xffff flowid 1:2
               done
+          
             echo "Before sleep..."
             sleep {{ duration }}s
             echo "After sleep..."
@@ -119,5 +117,5 @@ mainSteps:
             echo "Before removing network latency..."
             tc qdisc del dev {{ interface }} root
             echo "After removing network latency..."
-
+          fi
           EOF

@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from typing import List
 from botocore.exceptions import ClientError
 from experimentvr.ec2.shared import get_test_instance_ids
-from chaosk8s import terminate_pods
+from chaosk8s.pod.actions import terminate_pods
 
 from kubernetes import client, config
 from experimentvr.k8s.shared import (
@@ -80,7 +80,6 @@ def kill_pods(
             f"{function_name}(): calling get_eks_api_client(cluster_name={cluster_name}, region={region})"
         )
         api_client = get_eks_api_client(cluster_name=cluster_name, region=region)
-        logger.info()
         os.environ["KUBERNETES_HOST"] = api_client.configuration.host
         os.environ["KUBERNETES_API_KEY"] = api_client.configuration.api_key[
             "authorization"
@@ -97,7 +96,7 @@ def kill_pods(
         logger.error(e)
         raise
 
-    return pod_del
+    return {"pods_terminated": pod_del}
 
 
 def eks_update_image_tag(
@@ -214,7 +213,7 @@ def pod_stress_packet_loss(
     interface: str = "eth0",
     max_duration: str = "900",
     pod_stress_packet_loss_parameter_map: dict[str, dict] = {},
-    pod_stress_packet_loss_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_stress_packet_loss_failure_mode: bool = True,
 ):
     function_name = inspect.stack()[0][3]
 
@@ -250,7 +249,7 @@ def pod_stress_packet_loss(
         int(pod_stress_packet_loss_parameter_map[x]["duration"][0])
         for x in pod_stress_packet_loss_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -260,7 +259,7 @@ def pod_stress_packet_loss(
 
     results = run_ssm_doc_multistage(
         doc_name="PodStressPacketLoss",
-        failure_mode=pod_stress_packet_loss_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_stress_packet_loss_failure_mode],
         param_map=pod_stress_packet_loss_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -289,7 +288,7 @@ def pod_stress_network_latency(
     interface: str = "eth0",
     max_duration: str = "900",
     pod_stress_network_latency_parameter_map: dict[str, dict] = {},
-    pod_stress_network_latency_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_stress_network_latency_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -325,7 +324,7 @@ def pod_stress_network_latency(
         int(pod_stress_network_latency_parameter_map[x]["duration"][0])
         for x in pod_stress_network_latency_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -335,7 +334,7 @@ def pod_stress_network_latency(
 
     results = run_ssm_doc_multistage(
         doc_name="PodStressNetworkLatency",
-        failure_mode=pod_stress_network_latency_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_stress_network_latency_failure_mode],
         param_map=pod_stress_network_latency_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -364,7 +363,7 @@ def pod_stress_network_utilization(
     interface: str = "eth0",
     max_duration: str = "900",
     pod_stress_network_utilization_parameter_map: dict[str, dict] = {},
-    pod_stress_network_utilization_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_stress_network_utilization_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -400,7 +399,7 @@ def pod_stress_network_utilization(
         int(pod_stress_network_utilization_parameter_map[x]["duration"][0])
         for x in pod_stress_network_utilization_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -410,7 +409,9 @@ def pod_stress_network_utilization(
 
     results = run_ssm_doc_multistage(
         doc_name="PodStressNetworkUtilization",
-        failure_mode=pod_stress_network_utilization_failure_mode,
+        failure_mode=ParameterMapFailuremode[
+            pod_stress_network_utilization_failure_mode
+        ],
         param_map=pod_stress_network_utilization_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -436,7 +437,7 @@ def pod_stress_cpu(
     max_duration: str = "900",
     pod_cpu: str = "80",
     pod_stress_cpu_parameter_map: dict[str, dict] = {},
-    pod_stress_cpu_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_stress_cpu_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -469,7 +470,7 @@ def pod_stress_cpu(
         int(pod_stress_cpu_parameter_map[x]["duration"][0])
         for x in pod_stress_cpu_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -479,7 +480,7 @@ def pod_stress_cpu(
 
     results = run_ssm_doc_multistage(
         doc_name="PodStressCPU",
-        failure_mode=pod_stress_cpu_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_stress_cpu_failure_mode],
         param_map=pod_stress_cpu_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -506,7 +507,7 @@ def pod_stress_memory(
     pod_stress_memory_percent_per_worker: str = "50",
     pod_stress_memory_number_of_workers: str = "1",
     pod_stress_memory_parameter_map: dict[str, dict] = {},
-    pod_stress_memory_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_stress_memory_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -540,7 +541,7 @@ def pod_stress_memory(
         int(pod_stress_memory_parameter_map[x]["duration"][0])
         for x in pod_stress_memory_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -550,7 +551,7 @@ def pod_stress_memory(
 
     results = run_ssm_doc_multistage(
         doc_name="PodStressMemory",
-        failure_mode=pod_stress_memory_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_stress_memory_failure_mode],
         param_map=pod_stress_memory_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -576,7 +577,7 @@ def pod_stress_cpu(
     max_duration: str = "900",
     pod_stress_cpu_percentage: str = "50",
     pod_stress_memory_parameter_map: dict[str, dict] = {},
-    pod_stress_memory_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_stress_memory_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -609,7 +610,7 @@ def pod_stress_cpu(
         int(pod_stress_memory_parameter_map[x]["duration"][0])
         for x in pod_stress_memory_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -619,7 +620,7 @@ def pod_stress_cpu(
 
     results = run_ssm_doc_multistage(
         doc_name="PodStressCPU",
-        failure_mode=pod_stress_memory_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_stress_memory_failure_mode],
         param_map=pod_stress_memory_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -644,7 +645,7 @@ def pod_exhaust_root_vol(
     duration: str = "60",
     max_duration: str = "900",
     pod_exhaust_root_vol_parameter_map: dict[str, dict] = {},
-    pod_exhaust_root_vol_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_exhaust_root_vol_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -676,7 +677,7 @@ def pod_exhaust_root_vol(
         int(pod_exhaust_root_vol_parameter_map[x]["duration"][0])
         for x in pod_exhaust_root_vol_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -686,7 +687,7 @@ def pod_exhaust_root_vol(
 
     results = run_ssm_doc_multistage(
         doc_name="PodDiskVolumeExhaustion",
-        failure_mode=pod_exhaust_root_vol_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_exhaust_root_vol_failure_mode],
         param_map=pod_exhaust_root_vol_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -709,7 +710,7 @@ def delete_pod_ssm(
     tag_value: str = None,
     region: str = "us-east-1",
     delete_pod_ssm_parameter_map: dict[str, dict] = {},
-    delete_pod_ssm_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    delete_pod_ssm_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -738,7 +739,7 @@ def delete_pod_ssm(
 
     results = run_ssm_doc_multistage(
         doc_name="DeletePod",
-        failure_mode=delete_pod_ssm_failure_mode,
+        failure_mode=ParameterMapFailuremode[delete_pod_ssm_failure_mode],
         param_map=delete_pod_ssm_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -761,7 +762,7 @@ def pod_termination_crash(
     region: str = "us-east-1",
     num_containers_to_target: str = "1",
     pod_termination_crash_parameter_map: dict[str, dict] = {},
-    pod_termination_crash_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_termination_crash_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -794,7 +795,7 @@ def pod_termination_crash(
 
     results = run_ssm_doc_multistage(
         doc_name="PodTerminationCrash",
-        failure_mode=pod_termination_crash_parameter_map,
+        failure_mode=ParameterMapFailuremode[pod_termination_crash_failure_mode],
         param_map=pod_termination_crash_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -823,7 +824,7 @@ def pod_blackhole_by_port(
     pod_blackhole_by_port_duration: str = "60",
     max_duration: str = "900",
     pod_blackhole_by_port_parameter_map: dict[str, dict] = {},
-    pod_blackhole_by_port_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_blackhole_by_port_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -859,7 +860,7 @@ def pod_blackhole_by_port(
         int(pod_blackhole_by_port_parameter_map[x]["duration"][0])
         for x in pod_blackhole_by_port_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -869,7 +870,7 @@ def pod_blackhole_by_port(
 
     results = run_ssm_doc_multistage(
         doc_name="PodBlackholeByPort",
-        failure_mode=pod_blackhole_by_port_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_blackhole_by_port_failure_mode],
         param_map=pod_blackhole_by_port_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -897,7 +898,7 @@ def pod_blackhole_by_ip(
     pod_blackhole_by_ip_duration: str = "60",
     max_duration: str = "900",
     pod_blackhole_by_ip_parameter_map: dict[str, dict] = {},
-    pod_blackhole_by_ip_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_blackhole_by_ip_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -933,7 +934,7 @@ def pod_blackhole_by_ip(
         int(pod_blackhole_by_ip_parameter_map[x]["duration"][0])
         for x in pod_blackhole_by_ip_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -943,7 +944,7 @@ def pod_blackhole_by_ip(
 
     results = run_ssm_doc_multistage(
         doc_name="PodBlackholeByIP",
-        failure_mode=pod_blackhole_by_ip_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_blackhole_by_ip_failure_mode],
         param_map=pod_blackhole_by_ip_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,
@@ -972,7 +973,7 @@ def pod_blackhole_by_name(
     pod_blackhole_by_name_duration: str = "60",
     max_duration: str = "900",
     pod_blackhole_by_name_parameter_map: dict[str, dict] = {},
-    pod_blackhole_by_name_failure_mode: ParameterMapFailuremode = ParameterMapFailuremode.FailFast,
+    pod_blackhole_by_name_failure_mode: str = "FailFast",
 ):
     function_name = inspect.stack()[0][3]
 
@@ -1014,7 +1015,7 @@ def pod_blackhole_by_name(
         int(pod_blackhole_by_name_parameter_map[x]["duration"][0])
         for x in pod_blackhole_by_name_parameter_map
     ]
-    if sum_duration > int(max_duration):
+    if sum_duration[0] > int(max_duration):
         logger.error(
             f"{function_name}(): Combined duration over max: {sum_duration} > {max_duration}"
         )
@@ -1024,7 +1025,7 @@ def pod_blackhole_by_name(
 
     results = run_ssm_doc_multistage(
         doc_name="PodBlackholeByPort",
-        failure_mode=pod_blackhole_by_name_failure_mode,
+        failure_mode=ParameterMapFailuremode[pod_blackhole_by_name_failure_mode],
         param_map=pod_blackhole_by_name_parameter_map,
         def_instance_params=def_instance_params,
         def_doc_params=def_ssm_doc_params,

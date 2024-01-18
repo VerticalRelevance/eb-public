@@ -27,17 +27,11 @@ def k8s_api_stressor(end, region, target):
 
 
 def get_bearer_token(cluster_name, region, expires=60):
-    STS_TOKEN_EXPIRES_IN = expires
-    logger.debug(f"get_bearer_token(): cluster_name={cluster_name}, region={region}")
-    logger.debug(f"get_bearer_token(): Creating boto3 session")
-
+    STS_TOKEN_EXPIRES_IN = 60
     session = boto3.session.Session()
 
-    logger.debug(f"get_bearer_token(): Creating sts client")
     client = session.client("sts", region_name=region)
     service_id = client.meta.service_model.service_id
-    logger.debug(f"get_bearer_token(): service_id={service_id}")
-    logger.debug(f"get_bearer_token(): Creating request signer")
 
     signer = RequestSigner(
         service_id, region, "sts", "v4", session.get_credentials(), session.events
@@ -45,28 +39,26 @@ def get_bearer_token(cluster_name, region, expires=60):
 
     params = {
         "method": "GET",
-        "url": f"http://sts.{region}.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15",
+        "url": "https://sts.{}.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15".format(
+            region
+        ),
         "body": {},
         "headers": {"x-k8s-aws-id": cluster_name},
         "context": {},
     }
 
-    logger.debug(f"get_bearer_token(): Generating signer.presigned_url")
     signed_url = signer.generate_presigned_url(
         params, region_name=region, expires_in=STS_TOKEN_EXPIRES_IN, operation_name=""
     )
 
-    logger.debug(f"get_bearer_token(): Encoding signed_url")
     base64_url = base64.urlsafe_b64encode(signed_url.encode("utf-8")).decode("utf-8")
 
-    logger.debug(f"get_bearer_token(): Returning signed_url as token")
+    # remove any base64 encoding padding:
     token = "k8s-aws-v1." + re.sub(r"=*", "", base64_url)
-
-    logger.debug(f"get_bearer_token(): token={token}")
     return token
 
 
-def get_eks_api_client(cluster_name, region, expires=60, verify_ssl=True):
+def get_eks_api_client(cluster_name, region, expires=60, verify_ssl=False):
     logger.debug(f"get_eks_api_client(): getting bearer token via get_bearer_token()")
     bearer_token = get_bearer_token(
         cluster_name=cluster_name, region=region, expires=expires

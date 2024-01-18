@@ -16,7 +16,6 @@ parameters:
     type: String
     description: "The interface to add delay to (default: eth0)."
     default: "eth0"
-    allowedPattern: '^[0-9a-zA-Z\-]{1,15}$'
   portNumber:
     type: String
     description: |
@@ -24,33 +23,24 @@ parameters:
       The allowed values are:
       * PortNumber: The Port No on which the network latency is to be induced.
     default: "0"
-    allowedPattern: "^[0-9]+$"
   portType:
     type: String
     description: |
       The port type on which to induce the network latency. (default:sport).
       The allowed values are: dport, sport.
     default: "sport"
-    allowedValues:
-      - dport
-      - sport
   loss:
     type: String
     description: "The percent of packet to drop. (default: 7)."
     default: "7"
-    allowedPattern: "^[0-9]+$"
   duration:
     type: String
     description: "The duration - in seconds - of the test (default: 60)."
     default: "60"
-    allowedPattern: "^[0-9]+$"
   installDependencies:
     type: String
     description: "If set to True, Systems Manager installs the required dependencies on the target instances. (default: True)."
     default: 'True'
-    allowedValues:
-      - 'True'
-      - 'False'
 mainSteps:
   - action: aws:runShellScript
     precondition:

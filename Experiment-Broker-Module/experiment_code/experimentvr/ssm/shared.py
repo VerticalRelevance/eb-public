@@ -3,6 +3,7 @@ import logging
 import inspect
 import json
 import os
+from traceback import format_exc
 from logzero import logger
 from time import sleep
 from os import environ
@@ -71,17 +72,17 @@ def run_ssm_doc(
     incomplete = []
     command = response["Command"]
     logger.debug(f"""Command initiated with id: {command["InstanceIds"]}""")
-    instances = [x for x in command["InstanceIds"]]
+
     while datetime.now() < end_time:
         current_status = ssm.list_command_invocations(
-            CommandId=command["CommandId"], details=True
+            CommandId=command["CommandId"], Details=True
         )["CommandInvocations"]
 
         while not current_status:
             logger.debug(f"""Command {command["CommandId"]} not found, waiting""")
             sleep(2)
             current_status = current_status = ssm.list_command_invocations(
-                CommandId=command["CommandId"], details=True
+                CommandId=command["CommandId"], Details=True
             )["CommandInvocations"]
 
         incomplete = [
@@ -178,10 +179,10 @@ def run_ssm_doc_multistage(
             # merge parameters from sev_params into default params to create final parameters for stage execution
             # all parameters in sev_params must be a subset of the parames in the defaults
             step_doc_params = def_doc_params | {
-                k: v for k, v in sev_params.items if k in def_doc_params
+                k: v for k, v in sev_params.items() if k in def_doc_params
             }
             step_instance_params = def_instance_params | {
-                k: v for k, v in sev_params.items if k in def_instance_params
+                k: v for k, v in sev_params.items() if k in def_instance_params
             }
 
             test_instance_ids = get_test_instance_ids(
@@ -214,6 +215,10 @@ def run_ssm_doc_multistage(
                     results.append((parameter_map_key, "success", run_results))
             except Exception as e:
                 logger.error(e)
-                results.append((parameter_map_key, "failed", run_results))
+                err = format_exc()
+                try:
+                    results.append((parameter_map_key, "failed", run_results))
+                except NameError:
+                    results.append((parameter_map_key, "failed", err))
             last_run_duration = datetime.now() - step_start_time
     return results
