@@ -4,6 +4,8 @@ description: This experiment will Terminate an eks pod to simulate a crash or ac
 configuration:
   target: "experiment-demo.experimentvr.verticalrelevancelabs.com"
   intensity: 1000
+  alarm_name: "Experiment-Demo PacketLoss"
+  alarm_state: "ALARM"
   aws_region: 'us-east-1'
   cluster_name: "experiment-eks"
   name_space: "experiment-demo"
@@ -33,6 +35,7 @@ steady-state-hypothesis:
 method:
   - type: action
     name: Introduce load to experiment-demo
+    background: true
     provider:
       type: python
       module: experimentvr.load.actions
@@ -61,3 +64,12 @@ method:
         tag_value: ${tag_value}
         region: ${aws_region}
         ec2_stress_packet_loss_parameter_map: ${ec2_stress_packet_loss_parameter_map}
+  - type: probe
+    name: Check Alarm State
+    provider:
+      type: python
+      module: experimentvr.cloudwatch.probes
+      func: probe_alarm_state
+      arguments:
+        alarm_name: ${alarm_name}
+        alarm_state: ${alarm_state}
