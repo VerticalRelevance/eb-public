@@ -1,10 +1,10 @@
 version: 1.0.0
-title: Demo-Kubernetes(EKS)-Worker Node (EC2)-Network-PacketLossLatency
+title: Demo-Kubernetes(EKS)-Worker Node (EC2)-Network-Latency
 description: This experiment will Terminate an eks pod to simulate a crash or accidental termination
 configuration:
   target: "experiment-demo.experimentvr.verticalrelevancelabs.com"
   intensity: 1000
-  alarm_name: "Experiment-Demo PacketLoss"
+  alarm_name: "Experiment-Demo Latency"
   alarm_state: "ALARM"
   aws_region: 'us-east-1'
   cluster_name: "experiment-eks"
@@ -12,11 +12,6 @@ configuration:
   pod_name_pattern: "experiment-demo"
   tag_key: 'tag:k8s.io/cluster-autoscaler/experiment-eks'
   tag_value: 'owned'
-  ec2_stress_packet_loss_parameter_map: 
-    loss_20_percent:
-      ec2_stress_packet_loss_percent: "20"
-    loss_80_percent:
-      ec2_stress_packet_loss_percent: "80"
 
 steady-state-hypothesis:
     title: Check Service Status is Healthy
