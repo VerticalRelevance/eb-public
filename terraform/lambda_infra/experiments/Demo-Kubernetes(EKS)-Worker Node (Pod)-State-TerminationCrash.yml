@@ -4,7 +4,7 @@ description: This experiment will Terminate an eks pod to simulate a crash or ac
 configuration:
   target: "experiment-demo.experimentvr.verticalrelevancelabs.com"
   intensity: 1000
-  alarm_name: "Experiment-Demo PacketLoss"
+  alarm_name: "Experiment-Demo Health"
   alarm_state: "ALARM"
   aws_region: 'us-east-1'
   cluster_name: "experiment-eks"

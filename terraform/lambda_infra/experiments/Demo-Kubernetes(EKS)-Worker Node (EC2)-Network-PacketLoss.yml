@@ -1,5 +1,5 @@
 version: 1.0.0
-title: Demo-Kubernetes(EKS)-Worker Node (EC2)-Network-PacketLossLatency
+title: Demo-Kubernetes(EKS)-Worker Node (EC2)-Network-PacketLoss
 description: This experiment will Terminate an eks pod to simulate a crash or accidental termination
 configuration:
   target: "experiment-demo.experimentvr.verticalrelevancelabs.com"
