@@ -96,7 +96,7 @@ def kill_pods(
         logger.error(e)
         raise
 
-    return pod_del
+    return {"pods_terminated": pod_del}
 
 
 def eks_update_image_tag(
