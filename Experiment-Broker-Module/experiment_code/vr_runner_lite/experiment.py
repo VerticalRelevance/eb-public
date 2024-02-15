@@ -88,8 +88,8 @@ def validate_experiment(experiment: dict):
     return True
 
 #Runs probe activities and checks steady state
-def run_steady_state_probes(probe_list):
-    probe_outputs = run_activities(probe_list)
+def run_steady_state_probes(probe_list, experiment_config:dict):
+    probe_outputs = run_activities(probe_list, experiment_config)
     steady_state_met = True
 
     #Check tolerance met in probe output
@@ -104,7 +104,7 @@ def run_steady_state_probes(probe_list):
     }
 
 #Runs a list of activities and returns outputs
-def run_activities(activity_list:list):
+def run_activities(activity_list:list, experiment_config:dict):
     activities = []
     for activity in activity_list:
         tolerance = False
@@ -116,7 +116,8 @@ def run_activities(activity_list:list):
             module=activity['provider']['module'],
             func=activity['provider']['func'],
             arguments=activity['provider']['arguments'],
-            tolerance=tolerance
+            tolerance=tolerance,
+            experiment_config=experiment_config
         )
 
         activity_output['activity'] = activity
@@ -125,7 +126,7 @@ def run_activities(activity_list:list):
     return activities
 
 #Stub for method.execute (Should be deleted)
-def execute(module: str, func: str, arguments: dict[str], tolerance):
+def execute(module: str, func: str, arguments: dict[str], tolerance, experiment_config:dict):
     start_time =  datetime.datetime.now()
     end_time =  datetime.datetime.now()
     duration = end_time - start_time
@@ -146,14 +147,14 @@ def run_experiment(experiment: dict):
     deviated = False
 
     # Check Pre Execution Steady State Hypothesis
-    steady_states = {'before' : run_steady_state_probes(experiment['steady-state-hypothesis']['probes'])}
+    steady_states = {'before' : run_steady_state_probes(experiment['steady-state-hypothesis']['probes'], experiment['configuration'])}
 
     if steady_states['before']['steady_state_met']:
         # Execute Method
-        run = run_activities(experiment['method'])
+        run = run_activities(experiment['method'], experiment['configuration'])
 
         # Check Post Execution Steady State Hypothesis
-        steady_states['after'] = run_steady_state_probes(experiment['steady-state-hypothesis']['probes'])
+        steady_states['after'] = run_steady_state_probes(experiment['steady-state-hypothesis']['probes'], experiment['configuration'])
         steady_states['during'] = []
 
         if steady_states['after']['steady_state_met'] == False:
