@@ -133,52 +133,64 @@ def execute(module: str, func: str, arguments: dict[str], tolerance, experiment_
 
     return  {                
                 "output": True,
-                "start": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "start": start_time.isoformat(),
                 "status": "succeeded",
-                "end": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end": end_time.isoformat(),
                 "duration": duration.total_seconds(),
                 "tolerance_met": True
             }
 
 def run_experiment(experiment: dict):
-    validate_experiment(experiment)
-    experiment_start_time =  datetime.datetime.now()
-    status = 'completed'
-    deviated = False
+    try:
+        validate_experiment(experiment)
+        experiment_start_time =  datetime.datetime.now()
+        status = 'completed'
+        deviated = False
 
-    # Check Pre Execution Steady State Hypothesis
-    steady_states = {'before' : run_steady_state_probes(experiment['steady-state-hypothesis']['probes'], experiment['configuration'])}
+        experiment_journal = {
+            "chaoslib-version": "1.41.0",
+            "platform": "Linux-5.10.201-213.748.amzn2.x86_64-x86_64-with-glibc2.26",
+            "node": "169.254.68.133",
+            "experiment" : experiment,
+            "start": experiment_start_time.isoformat()
+        }
 
-    if steady_states['before']['steady_state_met']:
-        # Execute Method
-        run = run_activities(experiment['method'], experiment['configuration'])
+        # Check Pre Execution Steady State Hypothesis
+        steady_states = {'before' : run_steady_state_probes(experiment['steady-state-hypothesis']['probes'], experiment['configuration'])}
 
-        # Check Post Execution Steady State Hypothesis
-        steady_states['after'] = run_steady_state_probes(experiment['steady-state-hypothesis']['probes'], experiment['configuration'])
-        steady_states['during'] = []
+        if steady_states['before']['steady_state_met']:
+            # Execute Method
+            experiment_journal["run"] = run_activities(experiment['method'], experiment['configuration'])
 
-        if steady_states['after']['steady_state_met'] == False:
-            deviated = True
+            # Check Post Execution Steady State Hypothesis
+            steady_states['after'] = run_steady_state_probes(experiment['steady-state-hypothesis']['probes'], experiment['configuration'])
+            steady_states['during'] = []
 
-    else:
-        status = 'failed'
+            if steady_states['after']['steady_state_met'] == False:
+                deviated = True
+
+        else:
+            status = 'failed'
+
+    except Exception as e:
+        print(f'Experiment Aborted with Exception: {e}')
+        status = 'aborted'
 
     experiment_end_time =  datetime.datetime.now()
-    experiment_journal = {
-                        "chaoslib-version": "1.41.0",
-                        "platform": "Linux-5.10.201-213.748.amzn2.x86_64-x86_64-with-glibc2.26",
-                        "node": "169.254.68.133",
-                        "experiment" : experiment,
-                        "start": experiment_start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        "status": status,
-                        "deviated": deviated,
-                        "steady_states": steady_states,
-                        "run": run,
-                        "rollbacks": [],
-                        "end": experiment_end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        "duration": (experiment_end_time - experiment_start_time).total_seconds()
-    }
 
-    print(experiment_journal)
+    #experiment_journal = {
+    #                    "chaoslib-version": "1.41.0",
+    #                    "platform": "Linux-5.10.201-213.748.amzn2.x86_64-x86_64-with-glibc2.26",
+    #                    "node": "169.254.68.133",
+    #                    "experiment" : experiment,
+    #                    "start": experiment_start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    experiment_journal["status"] = status
+    experiment_journal["deviated"] = deviated
+    experiment_journal["steady_states"] = steady_states
+    experiment_journal["rollbacks"] = []
+    experiment_journal["end"] = experiment_end_time.isoformat()
+    experiment_journal["duration"] = (experiment_end_time - experiment_start_time).total_seconds()
+
+    #print(experiment_journal)
 
     return experiment_journal

@@ -39,22 +39,27 @@ def execute(module: str, func: str, arguments: dict, tolerance, experiment_confi
 
     mod = importlib.import_module(module)
     exec_func = getattr(mod, func)
+    exception = []
 
     try:
         results = exec_func(**arguments)
         success = True
     except Exception as e:
-        results = traceback.format_exc()
+        results = None
+        exception = traceback.format_exc().split('\n')
 
     end_time = datetime.utcnow()
     duration = end_time - start_time
     return_data = {
         "start": start_time.isoformat(),
-        "end": end_time,
+        "end": end_time.isoformat(),
         "status": status_str[success],
         "duration": duration.total_seconds(),
         "output": results,
     }
+
+    if not success:
+        return_data['exception'] = exception
     
     if tolerance:
         return_data["tolerance_met"] = results == tolerance
