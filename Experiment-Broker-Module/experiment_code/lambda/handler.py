@@ -66,18 +66,21 @@ def handler(event, context):
         event.update({"state": "done"})
     else:
         event.update({"state": "failed"})
-
-    if "OPENSEARCH" in output_config.keys():
-        try:
-            upload_experiment_journal(
-                journal=experiment_journal, output_config=output_config["OPENSEARCH"]
-            )
-            logger.info(f"Experiment journal uploaded to Opensearch")
-        except Exception:
-            exc_str = traceback.format_exc()
-            logger.error(
-                f"Unable to upload experiment journal to Opensearch: {exc_str}"
-            )
+    try:
+        if "OPENSEARCH" in output_config.keys():
+            try:
+                upload_experiment_journal(
+                    journal=experiment_journal,
+                    output_config=output_config["OPENSEARCH"],
+                )
+                logger.info(f"Experiment journal uploaded to Opensearch")
+            except Exception:
+                exc_str = traceback.format_exc()
+                logger.error(
+                    f"Unable to upload experiment journal to Opensearch: {exc_str}"
+                )
+    except Exception:
+        pass
 
     if "S3" in output_config.keys():
         try:
