@@ -11,11 +11,12 @@ from datetime import datetime
 from experimentvr.opensearch.shared import upload_experiment_journal
 from botocore.config import Config
 from experimentvr.s3.shared import get_object, create_presigned_url, put_object
-from chaoslib.experiment import run_experiment
-from chaoslib.loader import load_experiment
+
+# from chaoslib.experiment import run_experiment
+# from chaoslib.loader import load_experiment
 from chaostoolkit.logging import configure_logger
 from logzero import logger
-
+from vr_runner_lite.experiment import run_experiment, load_experiment
 
 configure_logger()
 
@@ -51,10 +52,8 @@ def handler(event, context):
     except Exception as e:
         logger.exception("Unable to retrieve experiment %s: %s", experiment_source, e)
         raise
-
-    experiment = load_experiment(
-        create_presigned_url(event.get("bucket_name"), experiment_source)
-    )
+    url = create_presigned_url(event.get("bucket_name"), experiment_source)
+    experiment = load_experiment(url)
 
     experiment_journal = run_experiment(experiment)
 
