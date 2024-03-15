@@ -1,12 +1,13 @@
 import datetime
 import logging
-import method
 import numbers
 import os
 import json
 import yaml
 import requests
 
+from vr_runner_lite import method
+from json.decoder import JSONDecodeError
 from urllib.parse import urlparse
 
 logging.basicConfig(level=logging.INFO)
@@ -189,6 +190,14 @@ def load_experiment(experiment_source: str):
                 return yaml.safe_load(r.text)
             except yaml.YAMLError as e:
                 raise InvalidSource(f"Failed parsing YAML experiment: {str(e)}")
+        elif "text/plain" in content_type:
+            try:
+                return json.loads(r.text)
+            except JSONDecodeError:
+                try:
+                    return yaml.safe_load(r.text)
+                except yaml.YAMLError:
+                    pass
 
 
 def run_experiment(experiment: dict):
@@ -199,7 +208,7 @@ def run_experiment(experiment: dict):
         deviated = False
 
         experiment_journal = {
-            "chaoslib-version": "1.41.0",
+            "chaoslib-version": "NA",
             "platform": "Linux-5.10.201-213.748.amzn2.x86_64-x86_64-with-glibc2.26",
             "node": "169.254.68.133",
             "experiment": experiment,
@@ -239,12 +248,6 @@ def run_experiment(experiment: dict):
 
     experiment_end_time = datetime.datetime.now()
 
-    # experiment_journal = {
-    #                    "chaoslib-version": "1.41.0",
-    #                    "platform": "Linux-5.10.201-213.748.amzn2.x86_64-x86_64-with-glibc2.26",
-    #                    "node": "169.254.68.133",
-    #                    "experiment" : experiment,
-    #                    "start": experiment_start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
     experiment_journal["status"] = status
     experiment_journal["deviated"] = deviated
     experiment_journal["steady_states"] = steady_states
